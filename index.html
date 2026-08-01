@@ -48,17 +48,34 @@
   #aimBtn { bottom: 200px; right: 182px; width: 54px; height: 54px; background: rgba(120, 90, 220, 0.55); font-size: 11px; }
 
   /* ===== Start / Pause blocker ===== */
-  #blocker { position: fixed; inset: 0; z-index: 100; background: rgba(10, 10, 24, 0.88); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-  #blocker h1 { font-size: 52px; margin-bottom: 14px; letter-spacing: 2px; text-shadow: 0 0 20px rgba(120, 140, 255, 0.5); }
-  #blocker p { font-size: 15px; color: #ccc; max-width: 520px; line-height: 1.7; margin-bottom: 8px; }
-  #blocker .hint { color: #9aa; font-size: 13px; }
-  .start-btn { margin-top: 22px; padding: 16px 52px; font-size: 20px; font-weight: bold; color: #fff; background: linear-gradient(135deg, #2a3f8f, #1a2a6e); border: 2px solid #5a7aff; border-radius: 10px; cursor: pointer; letter-spacing: 2px; transition: transform 0.15s, box-shadow 0.15s; }
+  #blocker { position: fixed; inset: 0; z-index: 100; background: rgba(10, 10, 24, 0.92); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 16px; overflow-y: auto; }
+  #blocker h1 { font-size: 42px; margin-bottom: 10px; letter-spacing: 2px; text-shadow: 0 0 20px rgba(120, 140, 255, 0.5); }
+  #blocker p { font-size: 14px; color: #ccc; max-width: 520px; line-height: 1.6; margin-bottom: 6px; }
+  #blocker .hint { color: #9aa; font-size: 12px; }
+  .start-btn { margin-top: 14px; padding: 14px 40px; font-size: 18px; font-weight: bold; color: #fff; background: linear-gradient(135deg, #2a3f8f, #1a2a6e); border: 2px solid #5a7aff; border-radius: 10px; cursor: pointer; letter-spacing: 2px; transition: transform 0.15s, box-shadow 0.15s; }
   .start-btn:hover { transform: scale(1.06); box-shadow: 0 0 24px rgba(90, 122, 255, 0.55); }
   .start-btn:active { transform: scale(0.97); }
 
-  /* ===== Landscape prompt ===== */
+  /* ===== Mobile-optimized start screen ===== */
+  @media (max-width: 800px) {
+    #blocker { justify-content: flex-start; padding-top: 30px; }
+    #blocker h1 { font-size: 30px; margin-bottom: 6px; }
+    #blocker p { font-size: 12px; line-height: 1.5; margin-bottom: 4px; display: none; }
+    #blocker p:first-of-type { display: none; }
+    .start-btn { padding: 12px 34px; font-size: 16px; margin-top: 10px; width: 90%; max-width: 300px; }
+    #onlineMenu { margin-top: 14px; width: 100%; }
+    #onlineMenu > div:first-child { font-size: 14px; }
+    #onlineMenu .start-btn { width: 45%; max-width: 160px; padding: 10px 8px; font-size: 13px; }
+    #roomCodeBox { flex-direction: column; width: 90%; max-width: 280px; }
+    #roomCodeInput { width: 100%; font-size: 18px; padding: 12px; }
+    #roomCodeBox .start-btn { width: 100%; max-width: 280px; }
+    #serverHint { font-size: 11px; }
+    #roomStatus { font-size: 12px; }
+  }
+
+  /* ===== Landscape prompt (only AFTER game starts) ===== */
   .landscape-prompt { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; color: #fff; z-index: 200; align-items: center; justify-content: center; font-size: 20px; text-align: center; padding: 20px; }
-  @media (max-width: 800px) and (orientation: portrait) { .landscape-prompt { display: flex; } }
+  @media (max-width: 800px) and (orientation: portrait) { .landscape-prompt.show { display: flex; } }
 </style>
 </head>
 <body>
@@ -1471,6 +1488,8 @@
     gamePaused = false;
     blocker.style.display = 'none';
     hud.style.display = 'block';
+    // show landscape prompt on mobile portrait AFTER game starts
+    document.querySelector('.landscape-prompt').classList.add('show');
     if (isMobile) {
       mobileControls.style.display = 'block';
     } else {
@@ -1481,6 +1500,7 @@
     gamePaused = true;
     blocker.style.display = 'flex';
     hud.style.display = 'none';
+    document.querySelector('.landscape-prompt').classList.remove('show');
     if (isMobile) mobileControls.style.display = 'none';
   }
 
