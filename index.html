@@ -100,6 +100,13 @@
   <div id="adsSight"><div class="ring"></div><div class="post"></div></div>
   <div id="scopeOverlay"><div class="lens"></div><div class="crosshair"></div><div class="dot"></div></div>
   <div id="info">FPS: 0</div>
+  <div id="myHud" style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.45); padding:8px 12px; border-radius:8px; font-family:monospace; color:#fff;">
+    <div style="font-size:13px; margin-bottom:4px;">⚔️ <span id="myKillsLabel">0</span> | 💀 <span id="myDeathsLabel">0</span></div>
+    <div style="width:140px; height:10px; background:rgba(255,255,255,0.15); border-radius:5px; overflow:hidden;">
+      <div id="myHpBar" style="width:100%; height:100%; background:#4ade80; border-radius:5px; transition:width 0.2s;"></div>
+    </div>
+    <div id="deathOverlay" style="display:none; position:fixed; inset:0; background:rgba(180,0,0,0.55); z-index:999;"></div>
+  </div>
   <div id="gunLabel">AK-47</div>
   <div id="ammo">30 / 30</div>
   <div id="reloadBarWrap"><div id="reloadBar"></div></div>
@@ -1370,6 +1377,7 @@
   var bulletHoles = [];
   function shoot() {
     if (isReloading) return;
+    if (myDead) return; // can't shoot while dead
     if (ammo <= 0) {
       playEmptyClick();
       startReload();
@@ -1443,9 +1451,11 @@
 
     // ===== check hits against remote players (network shooting) =====
     if (myPeer) {
+      // per-weapon damage
+      var dmg = isShotgun ? 25 : isSniper ? 100 : isDeagle ? 40 : isPistol ? 20 : isLMG ? 15 : 25;
       for (var rk2 in remotePlayers) {
         var rp2 = remotePlayers[rk2];
-        if (!rp2) continue;
+        if (!rp2 || rp2.dead) continue; // skip dead players
         // vector from camera to remote player body
         var dx = rp2.x - camera.position.x;
         var dy = (rp2.y + 0.9) - camera.position.y; // aim at body center
@@ -1461,10 +1471,15 @@
         if (dot > cone) {
           // HIT! send damage to that player
           try {
-            if (isHost && peerConnections[rk2]) peerConnections[rk2].send({ t: 'hit' });
-            else if (myConn) myConn.send({ t: 'hit', target: rk2 });
+            if (isHost && peerConnections[rk2]) peerConnections[rk2].send({ t: 'damage', dmg: dmg });
+            else if (myConn) myConn.send({ t: 'damage', dmg: dmg, target: rk2 });
           } catch (e) {}
           showHitMarker(false);
+          // if this shot kills them, count a kill
+          if (rp2.hp - dmg <= 0) {
+            myKills++;
+            updatePlayerList();
+          }
         }
       }
     }
@@ -1712,6 +1727,27 @@
   var playerName = 'Player' + Math.floor(Math.random() * 900 + 100);
   var netStatus = document.getElementById('roomStatus');
 
+  // ===== MY OWN HP / DEATH / RESPAWN STATE =====
+  var myHP = 100;
+  var myMaxHP = 100;
+  var myDead = false;
+  var myKills = 0;
+  var myDeaths = 0;
+  var respawnTimer = 0;
+  var RESPAWN_TIME = 3; // seconds
+
+  // Respawn points (fixed positions around the room)
+  var RESPAWN_POINTS = [
+    { x: 0, z: 6 },
+    { x: 6, z: 0 },
+    { x: -6, z: 0 },
+    { x: 0, z: -6 },
+    { x: 6, z: 6 },
+    { x: -6, z: -6 },
+    { x: 6, z: -6 },
+    { x: -6, z: 6 }
+  ];
+
   function makePlayerModel() {
     var g = new THREE.Group();
     // body
@@ -1729,7 +1765,53 @@
       new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.7 }));
     gun.position.set(0, 1.25, -0.35);
     g.add(gun);
+
+    // ===== HP bar (above head) =====
+    var barGroup = new THREE.Group();
+    // background
+    var bg = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.09),
+      new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.8, depthTest: false }));
+    bg.position.y = 0.045;
+    barGroup.add(bg);
+    // green HP fill
+    var fill = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.05),
+      new THREE.MeshBasicMaterial({ color: 0x4ade80, depthTest: false }));
+    fill.position.y = 0.045;
+    barGroup.add(fill);
+    barGroup.position.y = 1.85;
+    barGroup.userData.fill = fill;
+    g.add(barGroup);
+
+    // name label (above HP bar)
+    var canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('...', 128, 40);
+    var tex = new THREE.CanvasTexture(canvas);
+    var label = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.2),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false }));
+    label.position.y = 2.1;
+    g.add(label);
+
+    g.userData.hpBar = barGroup;
+    g.userData.hpFill = fill;
+    g.userData.label = label;
     return g;
+  }
+
+  // Update HP bar fill for a remote player model
+  function updateHpBar(group, hp, maxHp) {
+    if (!group || !group.userData || !group.userData.hpFill) return;
+    var ratio = Math.max(0, Math.min(1, hp / maxHp));
+    var fill = group.userData.hpFill;
+    fill.scale.x = ratio;
+    fill.position.x = -(1 - ratio) * 0.33;
+    fill.material.color.set(ratio > 0.5 ? 0x4ade80 : ratio > 0.25 ? 0xfacc15 : 0xef4444);
   }
 
   function setStatus(txt) {
@@ -1743,10 +1825,11 @@
     var items = document.getElementById('playerListItems');
     var names = [];
     // me first (host or client)
-    names.push({ name: playerName + (isHost ? ' 👑' : ''), me: true });
+    names.push({ name: playerName + (isHost ? ' 👑' : ''), me: true, kills: myKills, deaths: myDeaths, hp: myHP, dead: myDead });
     // remote players
     for (var k in remotePlayers) {
-      names.push({ name: remotePlayers[k].name || 'Player', me: false });
+      var rp = remotePlayers[k];
+      names.push({ name: rp.name || 'Player', me: false, kills: rp.kills || 0, deaths: rp.deaths || 0, hp: rp.hp, dead: rp.dead });
     }
     if (names.length <= 1) {
       panel.style.display = 'none';
@@ -1755,11 +1838,13 @@
     panel.style.display = 'block';
     var html = '';
     for (var i = 0; i < names.length; i++) {
+      var n = names[i];
       html += '<div style="display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px; ' +
-        (names[i].me ? 'background:rgba(90,122,255,0.25);' : 'background:rgba(255,255,255,0.06);') + '">' +
-        '<span style="width:8px; height:8px; border-radius:50%; background:' + (names[i].me ? '#4ade80' : '#60a5fa') + ';"></span>' +
-        '<span style="font-size:13px; color:#fff;">' + names[i].name + '</span>' +
-        (names[i].me ? '<span style="font-size:10px; color:#9aa; margin-left:auto;">you</span>' : '') +
+        (n.me ? 'background:rgba(90,122,255,0.25);' : 'background:rgba(255,255,255,0.06);') + '">' +
+        '<span style="width:8px; height:8px; border-radius:50%; background:' + (n.dead ? '#ef4444' : n.me ? '#4ade80' : '#60a5fa') + ';"></span>' +
+        '<span style="font-size:13px; color:#fff;">' + n.name + '</span>' +
+        '<span style="font-size:10px; color:#9aa; margin-left:auto;">⚔' + n.kills + ' 💀' + n.deaths + '</span>' +
+        (n.dead ? '<span style="font-size:10px; color:#f87171;">DEAD</span>' : '') +
         '</div>';
     }
     items.innerHTML = html;
@@ -1813,14 +1898,107 @@
         updatePlayerList();
       }
     } else if (data.t === 'hit') {
-      // I got hit by another player
-      showHitMarker(true);
+      // I got hit by another player (legacy single-shot hit)
+      takeDamage(10);
+    } else if (data.t === 'damage') {
+      // damage from another player: { dmg: N }
+      takeDamage(data.dmg || 10);
+    } else if (data.t === 'hp') {
+      // remote player's HP changed
+      var rph = remotePlayers[peerId];
+      if (rph) {
+        rph.hp = data.hp || 0;
+        updateHpBar(rph.group, rph.hp, 100);
+      }
+    } else if (data.t === 'death') {
+      // someone died — mark their model as dead (fall down)
+      var rpd = remotePlayers[peerId];
+      if (rpd) {
+        rpd.dead = true;
+        rpd.group.rotation.x = Math.PI / 2; // fall over
+        rpd.group.position.y = 0.3;
+        if (rpd.group.userData.hpBar) rpd.group.userData.hpBar.visible = false;
+      }
+    } else if (data.t === 'respawn') {
+      // someone respawned — stand them back up at a point
+      var rpr = remotePlayers[peerId];
+      if (rpr) {
+        rpr.dead = false;
+        rpr.hp = 100;
+        rpr.group.rotation.x = 0;
+        rpr.group.position.y = 1.7;
+        if (rpr.group.userData.hpBar) rpr.group.userData.hpBar.visible = true;
+        updateHpBar(rpr.group, 100, 100);
+      }
     } else if (data.t === 'join' && isHost) {
       // new player joined — announce existing players
       var existing = [];
       for (var k in remotePlayers) existing.push(k);
       try { peerConnections[peerId].send({ t: 'welcome', players: existing }); } catch (e) {}
     }
+  }
+
+  // ===== TAKE DAMAGE (me) =====
+  function takeDamage(dmg) {
+    if (myDead) return;
+    myHP -= dmg;
+    showHitMarker(true);
+    updateMyHud();
+    if (myHP <= 0) {
+      myHP = 0;
+      die();
+    }
+    // send my HP to everyone so they see my bar drop
+    netSend({ t: 'hp', hp: myHP });
+  }
+
+  // ===== MY HUD (HP bar + kills/deaths) =====
+  function updateMyHud() {
+    var hpEl = document.getElementById('myHpBar');
+    var killsEl = document.getElementById('myKillsLabel');
+    var deathsEl = document.getElementById('myDeathsLabel');
+    if (hpEl) {
+      hpEl.style.width = Math.max(0, myHP) + '%';
+      hpEl.style.background = myHP > 50 ? '#4ade80' : myHP > 25 ? '#facc15' : '#ef4444';
+    }
+    if (killsEl) killsEl.textContent = myKills;
+    if (deathsEl) deathsEl.textContent = myDeaths;
+  }
+
+  // ===== DIE (me) =====
+  function die() {
+    if (myDead) return;
+    myDead = true;
+    myDeaths++;
+    respawnTimer = RESPAWN_TIME;
+    // tell everyone I died
+    netSend({ t: 'death' });
+    // death overlay
+    var ov = document.getElementById('deathOverlay');
+    if (ov) ov.style.display = 'block';
+    var hm = document.getElementById('hitmarker');
+    hm.style.opacity = '1';
+    hm.style.color = '#ff0000';
+    setTimeout(function () { hm.style.opacity = '0'; }, 800);
+    updateMyHud();
+    updatePlayerList();
+  }
+
+  // ===== RESPAWN (me) =====
+  function respawn() {
+    myDead = false;
+    myHP = myMaxHP;
+    // pick a fixed respawn point (random among the 8)
+    var pt = RESPAWN_POINTS[Math.floor(Math.random() * RESPAWN_POINTS.length)];
+    camera.position.set(pt.x, 1.7, pt.z);
+    yaw = Math.PI; // face center
+    // hide death overlay
+    var ov = document.getElementById('deathOverlay');
+    if (ov) ov.style.display = 'none';
+    // tell everyone I'm back
+    netSend({ t: 'respawn' });
+    updateMyHud();
+    updatePlayerList();
   }
 
   function showHitMarker(fromRemote) {
@@ -1834,7 +2012,7 @@
     if (remotePlayers[peerId]) return;
     var group = makePlayerModel();
     scene.add(group);
-    // name label
+    // name label (makePlayerModel already created one — update its texture)
     var canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 64;
     var ctx = canvas.getContext('2d');
@@ -1845,13 +2023,13 @@
     ctx.textAlign = 'center';
     ctx.fillText(name, 128, 40);
     var tex = new THREE.CanvasTexture(canvas);
-    var label = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.2),
-      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false }));
-    label.position.y = 1.9;
-    group.add(label);
+    var label = group.userData.label;
+    label.material.map = tex;
+    label.material.needsUpdate = true;
     remotePlayers[peerId] = {
       group: group, name: name, nameLabel: label,
-      x: 0, y: 1.7, z: 0, yaw: 0, pitch: 0
+      x: 0, y: 1.7, z: 0, yaw: 0, pitch: 0,
+      hp: 100, dead: false
     };
     setStatus('🎮 ' + Object.keys(remotePlayers).length + ' online');
     updatePlayerList();
@@ -1958,14 +2136,22 @@
 
     // always render scene (even when paused)
     if (gameStarted && !gamePaused) {
+      // ===== respawn countdown (when I'm dead) =====
+      if (myDead) {
+        respawnTimer -= dt;
+        if (respawnTimer <= 0) {
+          respawn();
+        }
+      }
       // ===== network sync (30Hz) =====
       netTimer += dt;
       if (netTimer > 0.033) {
         netTimer = 0;
-        if (myPeer) netBroadcastPosition();
+        if (myPeer && !myDead) netBroadcastPosition();
         // update remote players
         for (var rk in remotePlayers) {
           var rp = remotePlayers[rk];
+          if (rp.dead) continue; // keep dead players lying down
           rp.group.position.set(rp.x, rp.y, rp.z);
           rp.group.rotation.y = rp.yaw;
           rp.group.rotation.x = rp.pitch * 0.5;
@@ -1981,6 +2167,7 @@
       var speed = isRunning ? 8 : 4;
       if (aimBlend > 0.5) speed *= 0.6; // slower while aiming (realistic)
       var forward = 0, strafe = 0;
+      if (myDead) { forward = 0; strafe = 0; speed = 0; } // can't move while dead
       if (keys['KeyW'] || keys['ArrowUp']) forward += 1;
       if (keys['KeyS'] || keys['ArrowDown']) forward -= 1;
       if (keys['KeyA'] || keys['ArrowLeft']) strafe -= 1;
