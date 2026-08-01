@@ -56,14 +56,13 @@
   .start-btn:hover { transform: scale(1.06); box-shadow: 0 0 24px rgba(90, 122, 255, 0.55); }
   .start-btn:active { transform: scale(0.97); }
 
-  /* ===== Mobile-optimized start screen ===== */
-  @media (max-width: 800px) {
-    #blocker { justify-content: flex-start; padding-top: 30px; }
-    #blocker h1 { font-size: 30px; margin-bottom: 6px; }
-    #blocker p { font-size: 12px; line-height: 1.5; margin-bottom: 4px; display: none; }
-    #blocker p:first-of-type { display: none; }
-    .start-btn { padding: 12px 34px; font-size: 16px; margin-top: 10px; width: 90%; max-width: 300px; }
-    #onlineMenu { margin-top: 14px; width: 100%; }
+  /* ===== Mobile/compact start screen (phones & small windows) ===== */
+  @media (max-width: 900px), (max-height: 600px) {
+    #blocker { justify-content: flex-start; padding-top: 20px; }
+    #blocker h1 { font-size: 28px; margin-bottom: 6px; }
+    #blocker p { display: none; }
+    .start-btn { padding: 12px 28px; font-size: 16px; margin-top: 10px; width: 90%; max-width: 300px; }
+    #onlineMenu { margin-top: 12px; width: 100%; }
     #onlineMenu > div:first-child { font-size: 14px; }
     #onlineMenu .start-btn { width: 45%; max-width: 160px; padding: 10px 8px; font-size: 13px; }
     #roomCodeBox { flex-direction: column; width: 90%; max-width: 280px; }
@@ -71,6 +70,19 @@
     #roomCodeBox .start-btn { width: 100%; max-width: 280px; }
     #serverHint { font-size: 11px; }
     #roomStatus { font-size: 12px; }
+  }
+
+  /* ===== Landscape phones: two-column layout so everything fits ===== */
+  @media (max-width: 900px) and (orientation: landscape) {
+    #blocker { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 30px; padding: 10px 20px; }
+    #blocker h1 { font-size: 24px; width: 100%; margin-bottom: 4px; }
+    #startBtn { width: auto; min-width: 180px; margin-top: 0; }
+    #onlineMenu { margin-top: 0; width: auto; }
+    #onlineMenu > div:first-child { display: none; } /* hide "MULTIPLAYER" label on landscape */
+    #onlineMenu .start-btn { width: auto; min-width: 130px; }
+    #roomCodeBox { flex-direction: row; }
+    #roomCodeInput { width: 130px; }
+    #roomCodeBox .start-btn { width: auto; min-width: 90px; }
   }
 
   /* ===== Landscape prompt (only AFTER game starts) ===== */
