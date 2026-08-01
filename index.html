@@ -1870,6 +1870,49 @@
 
   function handleNetData(peerId, data) {
     if (!data || typeof data !== 'object') return;
+
+    // ===== HOST RELAY: forward messages from one client to all others =====
+    // When the host receives a broadcast-type message (pos/hp/death/respawn/name),
+    // it re-sends it to every OTHER client with a "from" tag so they know who it came from.
+    if (isHost) {
+      var relayTypes = { pos: 1, hp: 1, death: 1, respawn: 1, name: 1 };
+      if (relayTypes[data.t]) {
+        for (var rk in peerConnections) {
+          if (rk !== peerId) {
+            try {
+              peerConnections[rk].send({ from: peerId, relay: data });
+            } catch (e) {}
+          }
+        }
+        // host also applies the message locally
+        applyNetData(peerId, data);
+        return;
+      }
+      // non-relay messages (damage, join) apply locally on host
+      applyNetData(peerId, data);
+      return;
+    }
+
+    // ===== CLIENT: unwrap relayed messages =====
+    if (data.relay && data.from) {
+      // message relayed through host from another player
+      applyNetData(data.from, data.relay);
+      return;
+    }
+
+    // ===== CLIENT: direct messages from host =====
+    // host's own broadcasts come directly (no from tag) → treat peerId as host
+    if (data.t === 'pos' || data.t === 'hp' || data.t === 'death' || data.t === 'respawn' || data.t === 'name') {
+      applyNetData(peerId, data);
+      return;
+    }
+
+    applyNetData(peerId, data);
+  }
+
+  // Apply a network data message for a given source peer
+  function applyNetData(peerId, data) {
+    if (!data || typeof data !== 'object') return;
     if (data.t === 'pos') {
       var rp = remotePlayers[peerId];
       if (rp) {
@@ -1931,10 +1974,28 @@
         updateHpBar(rpr.group, 100, 100);
       }
     } else if (data.t === 'join' && isHost) {
-      // new player joined — announce existing players
+      // new player joined — announce existing players (with names)
       var existing = [];
-      for (var k in remotePlayers) existing.push(k);
+      for (var k in remotePlayers) {
+        if (k !== peerId) {
+          existing.push({ id: k, name: remotePlayers[k].name || 'Player' });
+        }
+      }
       try { peerConnections[peerId].send({ t: 'welcome', players: existing }); } catch (e) {}
+    } else if (data.t === 'welcome' && !isHost) {
+      // host tells me who's already in the room
+      var wl = data.players || [];
+      for (var wi = 0; wi < wl.length; wi++) {
+        var wpid = typeof wl[wi] === 'object' ? wl[wi].id : wl[wi];
+        var wpname = typeof wl[wi] === 'object' ? (wl[wi].name || 'Player') : 'Player';
+        if (!remotePlayers[wpid]) addRemotePlayer(wpid, wpname);
+      }
+    } else if (data.t === 'newplayer') {
+      // host tells me someone new joined
+      if (!remotePlayers[data.id]) addRemotePlayer(data.id, 'Player...');
+    } else if (data.t === 'playerleft') {
+      // host tells me someone left
+      removeRemotePlayer(data.id);
     }
   }
 
@@ -2067,8 +2128,23 @@
         conn.on('open', function () {
           conn.send({ t: 'name', name: playerName });
           addRemotePlayer(conn.peer, 'Player...');
+          // ===== tell OTHER clients about this new player =====
+          var newPeerId = conn.peer;
+          for (var pk in peerConnections) {
+            if (pk !== newPeerId) {
+              try { peerConnections[pk].send({ t: 'newplayer', id: newPeerId }); } catch (e) {}
+            }
+          }
           conn.on('data', function (d) { handleNetData(conn.peer, d); });
-          conn.on('close', function () { removeRemotePlayer(conn.peer); delete peerConnections[conn.peer]; });
+          conn.on('close', function () {
+            // tell everyone this player left
+            for (var pk2 in peerConnections) {
+              if (pk2 !== conn.peer) {
+                try { peerConnections[pk2].send({ t: 'playerleft', id: conn.peer }); } catch (e) {}
+              }
+            }
+            removeRemotePlayer(conn.peer); delete peerConnections[conn.peer];
+          });
         });
       });
     });
@@ -2099,11 +2175,17 @@
       myConn = conn;
       conn.on('open', function () {
         conn.send({ t: 'name', name: playerName });
+        conn.send({ t: 'join' }); // ask host for the player list
         setStatus('✅ Joined room ' + code);
         updatePlayerList();
         conn.on('data', function (d) {
           if (d && d.t === 'welcome') {
-            for (var i = 0; i < d.players.length; i++) addRemotePlayer(d.players[i], 'Player...');
+            var wl = d.players || [];
+            for (var i = 0; i < wl.length; i++) {
+              var wpid = typeof wl[i] === 'object' ? wl[i].id : wl[i];
+              var wpname = typeof wl[i] === 'object' ? (wl[i].name || 'Player') : 'Player';
+              if (!remotePlayers[wpid]) addRemotePlayer(wpid, wpname);
+            }
           }
           handleNetData(conn.peer, d);
         });
