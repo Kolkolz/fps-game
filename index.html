@@ -2722,7 +2722,8 @@
           fireTimer -= dt;
           if (fireTimer <= 0) {
             shoot();
-            fireTimer += WEAPONS[currentWeapon].fireInterval;
+            // reset to FULL interval — never below 0, so low FPS can't over-fire
+            fireTimer = WEAPONS[currentWeapon].fireInterval;
             if (ammo <= 0) fireTimer = 0; // trigger reload immediately on empty
           }
         } else {
