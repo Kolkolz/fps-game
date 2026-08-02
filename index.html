@@ -100,6 +100,7 @@
   <div id="adsSight"><div class="ring"></div><div class="post"></div></div>
   <div id="scopeOverlay"><div class="lens"></div><div class="crosshair"></div><div class="dot"></div></div>
   <div id="info">FPS: 0</div>
+  <div id="debugPanel" style="position:absolute; top:60px; left:12px; color:#0f0; font-size:11px; font-family:monospace; background:rgba(0,0,0,0.4); padding:6px 8px; border-radius:6px; display:none; line-height:1.6;"></div>
   <div id="myHud" style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.45); padding:8px 12px; border-radius:8px; font-family:monospace; color:#fff;">
     <div style="font-size:13px; margin-bottom:4px;">⚔️ <span id="myKillsLabel">0</span> | 💀 <span id="myDeathsLabel">0</span></div>
     <div style="width:140px; height:10px; background:rgba(255,255,255,0.15); border-radius:5px; overflow:hidden;">
@@ -127,7 +128,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v20</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v21</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -197,7 +198,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v20'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v21'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -1203,12 +1204,14 @@
   var isReloading = false;
   var reloadTime = 1.6, reloadTimer = 0, reloadEndTime = 0;
   var reloadAnim = 0; // 0 = normal, animates down/up during reload
-  var lastShotTime = 0; // real-time timestamp of last shot (fire rate control)
-  var fireTimer = 0; // auto-fire cadence timer
+
+  // ===== FIRE SYSTEM (single source of truth — game loop only) =====
+  var firePressed = false;      // is the fire button held?
+  var lastShotTime = 0;         // performance.now() of last shot
+  var shotCount = 0;            // debug: total shots fired this game
   var gunBob = 0;
   var gunRecoil = 0;
   var muzzleFlashMesh = null;
-  var firing = false;
   var aiming = false; // ADS (aim down sights)
   var aimBlend = 0; // 0 = hip, 1 = fully aimed
   var footstepTimer = 0;
@@ -1467,6 +1470,7 @@
       return;
     }
     ammo--;
+    shotCount++; // debug counter
     ensureAudio();
     playGunshot();
     var wName = WEAPONS[currentWeapon].name;
@@ -1681,6 +1685,10 @@
       if (e.code === 'Digit6') switchWeapon(5);
       if (e.code === 'Digit7') switchWeapon(6);
       if (e.code === 'Digit8') switchWeapon(7);
+      if (e.code === 'F3') {
+        var dp = document.getElementById('debugPanel');
+        if (dp) dp.style.display = dp.style.display === 'none' ? 'block' : 'none';
+      }
     }
   });
   document.addEventListener('keyup', function (e) { keys[e.code] = false; });
@@ -1688,14 +1696,14 @@
 
   renderer.domElement.addEventListener('mousedown', function (e) {
     if (!gameStarted) return;
-    if (e.button === 0) { firing = true; shoot(); }
+    if (e.button === 0) { firePressed = true; } // game loop fires
     if (e.button === 2) aiming = true;
   });
   document.addEventListener('mouseup', function (e) {
-    if (e.button === 0) firing = false;
+    if (e.button === 0) firePressed = false;
     if (e.button === 2) aiming = false;
   });
-  window.addEventListener('blur', function () { firing = false; aiming = false; keys = {}; });
+  window.addEventListener('blur', function () { firePressed = false; aiming = false; keys = {}; });
   document.addEventListener('mousemove', function (e) {
     if (!gameStarted || gamePaused) return;
     if (document.pointerLockElement !== renderer.domElement) return;
@@ -1813,7 +1821,7 @@
     el.addEventListener('mouseup', function () { if (onUp) onUp(); });
     el.addEventListener('mouseleave', function () { if (onUp) onUp(); });
   }
-  btnBind('fireBtn', function () { firing = true; shoot(); }, function () { firing = false; });
+  btnBind('fireBtn', function () { firePressed = true; }, function () { firePressed = false; });
   btnBind('runBtn', function () { isRunning = true; }, function () { isRunning = false; });
   btnBind('reloadBtn', function () {
     if (!isReloading && ammo < magSize) startReload();
@@ -2722,17 +2730,28 @@
       // keep the viewmodel light following the gun (world position of gun)
       gunLight.position.copy(gunGroup.getWorldPosition(_gunWorldPos));
 
-      // auto-fire (full auto weapons); semi-auto fire once per press
-      var isSemi = WEAPONS[currentWeapon].name === 'PISTOL' || WEAPONS[currentWeapon].name === 'DEAGLE' || WEAPONS[currentWeapon].name === 'SNIPER';
-      if (firing && !isReloading && !myDead) {
-        fireTimer -= dt;
-        if (fireTimer <= 0) {
-          shoot();
-          fireTimer += WEAPONS[currentWeapon].fireInterval;
-          if (ammo <= 0) fireTimer = 0;
+      // ===== FIRE SYSTEM (game loop is the ONLY place that fires) =====
+      // Weapons are either AUTO (hold = continuous) or SEMI (one shot per press)
+      var wName2 = WEAPONS[currentWeapon].name;
+      var isSemi2 = wName2 === 'PISTOL' || wName2 === 'DEAGLE' || wName2 === 'SNIPER';
+      if (firePressed && !isReloading && !myDead) {
+        var nowMs = performance.now();
+        if (isSemi2) {
+          // SEMI: fire once per press — wait for release (firePressed=false) before next shot
+          if (lastShotTime === 0) {
+            shoot();
+            lastShotTime = nowMs;
+          }
+        } else {
+          // AUTO: fire immediately on press, then at weapon's real interval
+          if (lastShotTime === 0 || (nowMs - lastShotTime) >= WEAPONS[currentWeapon].fireInterval * 1000) {
+            shoot();
+            lastShotTime = nowMs;
+          }
         }
       } else {
-        fireTimer = 0;
+        // button released (or reloading/dead) → reset so next press fires instantly
+        lastShotTime = 0;
       }
 
       // reload timer (time-based — immune to frame rate drops)
@@ -2759,6 +2778,16 @@
         '  Y:' + camera.position.y.toFixed(1) +
         '  Z:' + camera.position.z.toFixed(1) +
         (isRunning && moving ? '  |  RUNNING' : '');
+      // debug panel (fire system diagnostics)
+      var dbg = document.getElementById('debugPanel');
+      if (dbg) {
+        dbg.innerHTML = 'FIRE DEBUG<br>' +
+          'weapon: ' + WEAPONS[currentWeapon].name + '<br>' +
+          'pressed: ' + firePressed + '<br>' +
+          'lastShot: ' + Math.round(lastShotTime) + 'ms<br>' +
+          'shots: ' + shotCount + '<br>' +
+          'ammo: ' + ammo + '/' + magSize;
+      }
       ammoEl.textContent = ammo + ' / ' + magSize;
       if (isReloading) ammoEl.textContent = 'RELOADING';
     }
