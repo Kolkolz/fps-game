@@ -368,16 +368,16 @@
   }
 
   /* ===================== LIGHTS ===================== */
-  // warm base lighting (Dust2 palette — sandy warm tones)
-  var ambient = new THREE.AmbientLight(0xffe8c8, 0.55);
+  // dim warm base lighting (darker mood)
+  var ambient = new THREE.AmbientLight(0xffd8b0, 0.35);
   scene.add(ambient);
 
-  var ceilingLight = new THREE.PointLight(0xffe0b0, 0.8, 25);
+  var ceilingLight = new THREE.PointLight(0xffd0a0, 0.45, 25);
   ceilingLight.position.set(0, 4.8, 0);
   ceilingLight.castShadow = true;
   scene.add(ceilingLight);
 
-  var dirLight = new THREE.DirectionalLight(0xfff0d0, 0.4);
+  var dirLight = new THREE.DirectionalLight(0xffe0b0, 0.2);
   dirLight.position.set(5, 5, 5);
   scene.add(dirLight);
 
@@ -550,9 +550,9 @@
       addCollider(2.5, -19.5, 0.45, 0.45);
     })();
 
-    // ===== WARM DUSTY LIGHTING (open sky) =====
-    // main warm sun from above
-    var sun = new THREE.DirectionalLight(0xffe8c0, 1.4);
+    // ===== WARM DUSTY LIGHTING (open sky, dimmed) =====
+    // main warm sun from above (reduced intensity)
+    var sun = new THREE.DirectionalLight(0xffd8b0, 0.8);
     sun.position.set(12, 20, 8);
     sun.castShadow = true;
     sun.shadow.mapSize.width = 2048;
@@ -560,17 +560,17 @@
     sun.shadow.camera.left = -25; sun.shadow.camera.right = 25;
     sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
     scene.add(sun);
-    // ambient warm (sky bounce)
-    var ambient = new THREE.AmbientLight(0xfff0d8, 0.65);
+    // ambient warm (sky bounce, dimmed)
+    var ambient = new THREE.AmbientLight(0xffe0b8, 0.4);
     scene.add(ambient);
-    // a few warm point lights for cover areas
-    var warm1 = new THREE.PointLight(0xffd9a0, 0.5, 12);
+    // a few dim warm point lights for cover areas
+    var warm1 = new THREE.PointLight(0xffc890, 0.3, 12);
     warm1.position.set(0, 4, 0);
     scene.add(warm1);
-    var warm2 = new THREE.PointLight(0xffd9a0, 0.4, 10);
+    var warm2 = new THREE.PointLight(0xffc890, 0.25, 10);
     warm2.position.set(14, 3, -4);
     scene.add(warm2);
-    var warm3 = new THREE.PointLight(0xffd9a0, 0.4, 10);
+    var warm3 = new THREE.PointLight(0xffc890, 0.25, 10);
     warm3.position.set(-14, 3, 8);
     scene.add(warm3);
   })();
