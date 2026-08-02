@@ -188,7 +188,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var ROOM = 20, WALL_H = 5;
+  var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
     || (navigator.maxTouchPoints > 1 && window.innerWidth < 1000);
@@ -203,8 +203,8 @@
 
   /* ===================== SCENE / CAMERA ===================== */
   var scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1a2e);
-  scene.fog = new THREE.Fog(0x1a1a2e, 15, 25);
+  scene.background = new THREE.Color(0x87b5e0); // open sky — dust2 outdoor feel
+  scene.fog = new THREE.Fog(0xd8c8a0, 30, 70);
 
   var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(0, 1.7, 6);
@@ -429,11 +429,7 @@
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // ceiling
-    var ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), ceilMat);
-    ceil.rotation.x = Math.PI / 2;
-    ceil.position.y = WALL_H;
-    scene.add(ceil);
+    // NO ceiling — open sky map (dust2 outdoor feel)
 
     // walls (stone, single-sided facing inward)
     var wallGeo = new THREE.PlaneGeometry(ROOM, WALL_H);
@@ -453,8 +449,26 @@
     we.rotation.y = -Math.PI / 2;
     scene.add(we);
 
+    // ===== INTERNAL ROUTE WALLS (dust2 layout: Long / Mid / Short / Tunnels) =====
+    var intWallMat = new THREE.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.9 });
+    // Long corridor wall (east side, vertical)
+    meshWithShadow(new THREE.BoxGeometry(0.5, WALL_H, 14), intWallMat, 9, WALL_H / 2, -5);
+    addCollider(9, -5, 0.3, 7);
+    // Long corridor end wall (north-east)
+    meshWithShadow(new THREE.BoxGeometry(8, WALL_H, 0.5), intWallMat, 5, WALL_H / 2, -12);
+    addCollider(5, -12, 4, 0.3);
+    // Mid wall (east side of mid)
+    meshWithShadow(new THREE.BoxGeometry(0.5, WALL_H, 10), intWallMat, -9, WALL_H / 2, -3);
+    addCollider(-9, -3, 0.3, 5);
+    // Short wall (north-west, separating short from mid)
+    meshWithShadow(new THREE.BoxGeometry(6, WALL_H, 0.5), intWallMat, -12, WALL_H / 2, -6);
+    addCollider(-12, -6, 3, 0.3);
+    // B wall (south side vertical divider)
+    meshWithShadow(new THREE.BoxGeometry(0.5, WALL_H, 10), intWallMat, 9, WALL_H / 2, 5);
+    addCollider(9, 5, 0.3, 5);
+
     // ===== CRATE COVERS (dust2 style — wooden boxes) =====
-    // Mid crate stack (like dust2 mid)
+    // Mid crate stack (like dust2 mid — center of map)
     meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, 0, 0.35, 2);
     meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, 1.3, 0.35, 2);
     meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, -1.3, 0.35, 2);
@@ -463,21 +477,30 @@
     addCollider(1.3, 2, 0.6, 0.6);
     addCollider(-1.3, 2, 0.6, 0.6);
 
-    // Long crate wall (like dust2 long corner)
-    meshWithShadow(new THREE.BoxGeometry(3, 0.8, 0.8), crateMat, 6, 0.4, -4);
-    meshWithShadow(new THREE.BoxGeometry(0.8, 0.8, 2.5), crateMat, 8.5, 0.4, -2.5);
-    meshWithShadow(new THREE.BoxGeometry(0.8, 0.8, 2.5), crateMat, -8.5, 0.4, -2.5);
-    addCollider(6, -4, 1.5, 0.45);
-    addCollider(8.5, -2.5, 0.45, 1.3);
-    addCollider(-8.5, -2.5, 0.45, 1.3);
+    // A site boxes (like dust2 A — double stack + single)
+    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, 14, 0.3, -4);
+    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, 14, 0.9, -4);
+    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, 15.5, 0.3, -4);
+    meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, 14.5, 0.35, -2);
+    addCollider(14, -4, 0.5, 0.5);
+    addCollider(15.5, -4, 0.5, 0.5);
+    addCollider(14.5, -2, 0.6, 0.6);
 
-    // Double stack (like dust2 A site boxes)
-    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, 5, 0.3, 5);
-    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, 5, 0.9, 5);
-    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, -5, 0.3, 5);
-    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, -5, 0.9, 5);
-    addCollider(5, 5, 0.5, 0.5);
-    addCollider(-5, 5, 0.5, 0.5);
+    // B site boxes (like dust2 B — window boxes)
+    meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, -14, 0.35, 8);
+    meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, -15.5, 0.35, 8);
+    meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, -14.5, 0.35, 9.5);
+    addCollider(-14, 8, 0.6, 0.6);
+    addCollider(-15.5, 8, 0.6, 0.6);
+    addCollider(-14.5, 9.5, 0.6, 0.6);
+
+    // Long corner boxes (like dust2 long)
+    meshWithShadow(new THREE.BoxGeometry(3, 0.8, 0.8), crateMat, 6, 0.4, -16);
+    meshWithShadow(new THREE.BoxGeometry(0.8, 0.8, 2.5), crateMat, 8.5, 0.4, -14.5);
+    meshWithShadow(new THREE.BoxGeometry(0.8, 0.8, 2.5), crateMat, 3.5, 0.4, -14.5);
+    addCollider(6, -16, 1.5, 0.45);
+    addCollider(8.5, -14.5, 0.45, 1.3);
+    addCollider(3.5, -14.5, 0.45, 1.3);
 
     // ===== BARRELS (dust2 classic) =====
     var barrelMat = new THREE.MeshStandardMaterial({ color: 0x6b6f4a, roughness: 0.7, metalness: 0.3 });
@@ -487,65 +510,68 @@
       meshWithShadow(new THREE.TorusGeometry(0.38, 0.025, 6, 16), barrelMat, x, 0.75, z);
       addCollider(x, z, 0.45, 0.45);
     }
-    addBarrel(3, -6);
-    addBarrel(4.2, -6);
-    addBarrel(-3, 6);
-    addBarrel(-4.2, 6);
-    addBarrel(7.5, 3);
+    addBarrel(2, 10);     // B area
+    addBarrel(3.2, 10);
+    addBarrel(-4, -10);   // short
+    addBarrel(11, 2);     // near A
+    addBarrel(0, -14);    // tunnels exit
 
     // ===== LOW WALLS (dust2 cover walls) =====
     var lowWallMat = new THREE.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.9 });
     // mid low wall
     meshWithShadow(new THREE.BoxGeometry(2.2, 1.2, 0.35), lowWallMat, 0, 0.6, -1);
     addCollider(0, -1, 1.15, 0.25);
-    // corner low walls
+    // corner low walls near sites
     meshWithShadow(new THREE.BoxGeometry(0.35, 1.2, 2.2), lowWallMat, -6.5, 0.6, 0);
     addCollider(-6.5, 0, 0.25, 1.15);
     meshWithShadow(new THREE.BoxGeometry(0.35, 1.2, 2.2), lowWallMat, 6.5, 0.6, 0);
     addCollider(6.5, 0, 0.25, 1.15);
+    // A site low wall
+    meshWithShadow(new THREE.BoxGeometry(2.5, 1.2, 0.35), lowWallMat, 16, 0.6, -6);
+    addCollider(16, -6, 1.3, 0.25);
 
-    // ===== RAMP (dust2 style slope near tunnel) =====
+    // ===== RAMP (dust2 style slope near tunnels) =====
     (function () {
       var rampGeo = new THREE.BoxGeometry(2, 0.15, 3);
-      var ramp = meshWithShadow(rampGeo, lowWallMat, 8, 0.075, 7);
+      var ramp = meshWithShadow(rampGeo, lowWallMat, 0, 0.075, -16);
       ramp.rotation.x = -0.2; // slight slope
       ramp.position.y = 0.3;
-      addCollider(8, 7, 1.1, 1.5);
+      addCollider(0, -16, 1.1, 1.5);
     })();
 
-    // ===== TUNNEL ARCH (like dust2 tunnels) =====
+    // ===== TUNNEL ARCH (like dust2 tunnels — north wall entrance) =====
     (function () {
       var archMat = new THREE.MeshStandardMaterial({ color: 0x8a6e48, roughness: 0.9 });
-      // two side pillars + top beam at the north wall
-      meshWithShadow(new THREE.BoxGeometry(0.6, 3, 0.6), archMat, -2.5, 1.5, -9.5);
-      meshWithShadow(new THREE.BoxGeometry(0.6, 3, 0.6), archMat, 2.5, 1.5, -9.5);
-      meshWithShadow(new THREE.BoxGeometry(6.2, 0.6, 0.6), archMat, 0, 3.3, -9.5);
-      addCollider(-2.5, -9.5, 0.45, 0.45);
-      addCollider(2.5, -9.5, 0.45, 0.45);
+      // two side pillars + top beam at the north wall (tunnels entrance)
+      meshWithShadow(new THREE.BoxGeometry(0.6, 3, 0.6), archMat, -2.5, 1.5, -19.5);
+      meshWithShadow(new THREE.BoxGeometry(0.6, 3, 0.6), archMat, 2.5, 1.5, -19.5);
+      meshWithShadow(new THREE.BoxGeometry(6.2, 0.6, 0.6), archMat, 0, 3.3, -19.5);
+      addCollider(-2.5, -19.5, 0.45, 0.45);
+      addCollider(2.5, -19.5, 0.45, 0.45);
     })();
 
-    // ===== WARM DUSTY LIGHTING =====
-    // main warm sun
-    var sun = new THREE.DirectionalLight(0xffe8c0, 1.1);
-    sun.position.set(8, 12, 5);
+    // ===== WARM DUSTY LIGHTING (open sky) =====
+    // main warm sun from above
+    var sun = new THREE.DirectionalLight(0xffe8c0, 1.4);
+    sun.position.set(12, 20, 8);
     sun.castShadow = true;
-    sun.shadow.mapSize.width = 1024;
-    sun.shadow.mapSize.height = 1024;
-    sun.shadow.camera.left = -15; sun.shadow.camera.right = 15;
-    sun.shadow.camera.top = 15; sun.shadow.camera.bottom = -15;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    sun.shadow.camera.left = -25; sun.shadow.camera.right = 25;
+    sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
     scene.add(sun);
-    // ambient warm
-    var ambient = new THREE.AmbientLight(0xfff0d8, 0.55);
+    // ambient warm (sky bounce)
+    var ambient = new THREE.AmbientLight(0xfff0d8, 0.65);
     scene.add(ambient);
-    // a few warm point lights
-    var warm1 = new THREE.PointLight(0xffd9a0, 0.5, 10);
+    // a few warm point lights for cover areas
+    var warm1 = new THREE.PointLight(0xffd9a0, 0.5, 12);
     warm1.position.set(0, 4, 0);
     scene.add(warm1);
-    var warm2 = new THREE.PointLight(0xffd9a0, 0.4, 8);
-    warm2.position.set(8, 3, -8);
+    var warm2 = new THREE.PointLight(0xffd9a0, 0.4, 10);
+    warm2.position.set(14, 3, -4);
     scene.add(warm2);
-    var warm3 = new THREE.PointLight(0xffd9a0, 0.4, 8);
-    warm3.position.set(-8, 3, 8);
+    var warm3 = new THREE.PointLight(0xffd9a0, 0.4, 10);
+    warm3.position.set(-14, 3, 8);
     scene.add(warm3);
   })();
 
@@ -1723,16 +1749,16 @@
   var respawnTimer = 0;
   var RESPAWN_TIME = 3; // seconds
 
-  // Respawn points (fixed positions around the room)
+  // Respawn points (fixed positions around the map — dust2 T/CT spawn vibes)
   var RESPAWN_POINTS = [
-    { x: 0, z: 6 },
-    { x: 6, z: 0 },
-    { x: -6, z: 0 },
-    { x: 0, z: -6 },
-    { x: 6, z: 6 },
-    { x: -6, z: -6 },
-    { x: 6, z: -6 },
-    { x: -6, z: 6 }
+    { x: -10, z: 12 },  // CT-ish spawn
+    { x: -6, z: 12 },
+    { x: 10, z: 12 },   // T-ish spawn  
+    { x: 6, z: 12 },
+    { x: 0, z: 16 },    // south spawns
+    { x: -14, z: 14 },
+    { x: 14, z: 14 },
+    { x: 0, z: -14 }    // tunnels spawn
   ];
 
   function makePlayerModel() {
