@@ -1804,8 +1804,12 @@
       if (onDown) onDown();
     }, { passive: false });
     el.addEventListener('touchend', function (e) { e.preventDefault(); if (onUp) onUp(); }, { passive: false });
+    // IMPORTANT: if touch moves off the button or is cancelled, still release!
+    el.addEventListener('touchcancel', function () { if (onUp) onUp(); }, { passive: false });
+    el.addEventListener('touchmove', function () { /* swallow so touchend fires on button */ }, { passive: false });
     el.addEventListener('mousedown', function (e) { e.preventDefault(); ensureAudio(); if (onDown) onDown(); });
     el.addEventListener('mouseup', function () { if (onUp) onUp(); });
+    el.addEventListener('mouseleave', function () { if (onUp) onUp(); });
   }
   btnBind('fireBtn', function () { firing = true; }, function () { firing = false; });
   btnBind('runBtn', function () { isRunning = true; }, function () { isRunning = false; });
