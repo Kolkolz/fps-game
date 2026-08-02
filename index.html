@@ -12,7 +12,14 @@
 
   /* ===== HUD ===== */
   #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: none; }
-  #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 28px; line-height: 1; text-shadow: 0 0 4px rgba(0,0,0,0.8); transition: font-size 0.15s ease; }
+  #crosshair { position: absolute; top: 50%; left: 50%; display: none; transform: translate(-50%, -50%); width: 0; height: 0; }
+  #crosshair .dot { position: absolute; width: 4px; height: 4px; left: 0; top: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 3px rgba(0,0,0,0.8); }
+  #crosshair .l, #crosshair .r { position: absolute; width: 16px; height: 2px; top: -1px; background: rgba(255,255,255,0.85); box-shadow: 0 0 2px rgba(0,0,0,0.8); }
+  #crosshair .l { left: -20px; }
+  #crosshair .r { right: -20px; }
+  #crosshair .u, #crosshair .d { position: absolute; width: 2px; height: 16px; left: -1px; background: rgba(255,255,255,0.85); box-shadow: 0 0 2px rgba(0,0,0,0.8); }
+  #crosshair .u { top: -20px; }
+  #crosshair .d { bottom: -20px; }
   #aimOverlay { position: fixed; inset: 0; z-index: 9; pointer-events: none; display: none; background: radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,0.7) 100%); }
   /* ===== ADS aperture sight (2D overlay) ===== */
   #adsSight { position: absolute; top: 50%; left: 50%; display: none; pointer-events: none; }
@@ -115,7 +122,7 @@
 <div id="game-canvas"></div>
 
 <div id="hud">
-  <div id="crosshair">+</div>
+  <div id="crosshair"><div class="dot"></div><div class="l"></div><div class="r"></div><div class="u"></div><div class="d"></div></div>
   <div id="aimOverlay"></div>
   <div id="adsSight"><div class="ring"></div><div class="post"></div></div>
   <div id="redDot"><div class="tube"></div><div class="rim"></div><div class="lens"></div><div class="dot"></div><div class="tick"></div><div class="mount"></div></div>
@@ -151,7 +158,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v7</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v8</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -221,7 +228,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v7'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v8'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -635,7 +642,7 @@
     // the glowing lens dot
     var dot = new THREE.Mesh(
       new THREE.SphereGeometry(0.005, 6, 5),
-      new THREE.MeshBasicMaterial({ color: 0xff2222 })
+      new THREE.MeshBasicMaterial({ color: 0xff2222, transparent: true, opacity: 1 })
     );
     dot.position.set(0, 0.075, -0.055);
     gunGroup.add(dot);
@@ -2741,30 +2748,28 @@
       camera.fov = hipFov + (adsFov - hipFov) * aimEase;
       camera.updateProjectionMatrix();
 
-      // ===== ADS: gun rises to center so its red-dot becomes your sight =====
-      // NOTE: the red dot is part of the 3D gun model, not a HUD overlay.
-      // Sniper: gun sinks so the scope lens stays clear.
+      // ===== ADS (PUBG-style): gun lowers, clean crosshair stays center =====
+      // In PUBG, when you ADS the weapon center-screen reticle is what you aim by;
+      // the gun body drops out so the world stays clear.
       var w = WEAPONS[currentWeapon];
       var gScale = 2.2 + (w.adsScale - 2.2) * aimEase;
       gunGroup.scale.set(gScale, gScale, gScale);
       var gx = 0.32 + (w.adsX - 0.32) * aimEase;
-      var gy = -0.32 + ((isSniper ? w.adsY : -0.10) + 0.32) * aimEase;
+      var gy = -0.32 + ((isSniper ? w.adsY : -0.30) + 0.32) * aimEase;
       var gz = -0.55 + (w.adsZ + 0.55) * aimEase;
       var aimTilt = -0.02 * aimEase;
-      if (isSniper) {
-        var sinkY = -aimEase * 1.1;
-        var sinkZ = -aimEase * 0.2;
-        gunGroup.position.set(gx + bobX * (1 - aimEase), gy + sinkY + bobY * (1 - aimEase), gz + sinkZ + gunRecoil * 0.06);
-      } else {
-        // red-dot is ON the gun → raise gun so the dot centers as your sight
-        gunGroup.position.set(gx + bobX * (1 - aimEase), gy + bobY * (1 - aimEase), gz + gunRecoil * 0.06);
-      }
+      // gun drops below center as you aim → only the crosshair remains at center
+      var dropY = -aimEase * 0.7;
+      gunGroup.position.set(gx + bobX * (1 - aimEase), gy + dropY + bobY * (1 - aimEase), gz + gunRecoil * 0.06);
       gunGroup.rotation.set(recPitch, aimTilt, 0);
 
-      // crosshair fades out while aiming — replaced by the gun's red dot
+      // clean PUBG-style crosshair visible while aiming (and hip)
       var crosshair = document.getElementById('crosshair');
-      crosshair.style.fontSize = (28 - 28 * aimEase) + 'px';
-      crosshair.style.opacity = 1 - aimEase;
+      crosshair.style.display = 'block';
+      crosshair.style.opacity = 1 - aimEase * 0.2;
+      // the gun's mounted red-dot fades out as the crosshair takes over (PUBG feel)
+      if (redDotMesh && !isSniper) redDotMesh.material.opacity = 1 - aimEase;
+      if (redDotFrame && !isSniper) redDotFrame.material.visible = true;
 
       // scope overlay only for sniper; the 3D red-dot is already ON the gun
       var adsSight = document.getElementById('adsSight');
