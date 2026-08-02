@@ -128,7 +128,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v24</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v25</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -198,7 +198,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v24'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v25'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -1209,6 +1209,8 @@
   var firePressed = false;      // is the fire button held?
   var lastShotTime = 0;         // performance.now() of last shot
   var shotCount = 0;            // debug: total shots fired this game
+  var semiFired = false;        // semi-auto: fired on current press?
+  var blockedShots = 0;         // debug: shots blocked by the rate guard
   var gunBob = 0;
   var gunRecoil = 0;
   var muzzleFlashMesh = null;
@@ -1464,11 +1466,18 @@
   function shoot() {
     if (isReloading) return;
     if (myDead) return; // can't shoot while dead
+    // ===== HARD FIRE-RATE GUARD (final protection — nothing can bypass this) =====
+    var nowMs = performance.now();
+    if (lastShotTime !== 0) {
+      var minGap = WEAPONS[currentWeapon].fireInterval * 1000;
+      if ((nowMs - lastShotTime) < minGap) { blockedShots++; return; } // too soon — IGNORE the shot
+    }
     if (ammo <= 0) {
       playEmptyClick();
       startReload();
       return;
     }
+    lastShotTime = nowMs;
     ammo--;
     shotCount++; // debug counter
     ensureAudio();
@@ -2730,27 +2739,24 @@
       // keep the viewmodel light following the gun (world position of gun)
       gunLight.position.copy(gunGroup.getWorldPosition(_gunWorldPos));
 
-      // ===== FIRE SYSTEM (game loop is the ONLY place that fires) =====
-      // Weapons are either AUTO (hold = continuous) or SEMI (one shot per press)
+      // ===== FIRE SYSTEM (game loop calls shoot ONCE per frame; shoot() has the hard rate guard) =====
+      // AUTO weapons: hold to keep firing (rate enforced inside shoot())
+      // SEMI weapons: only fire on a fresh press (firePressed rising edge)
       var wName2 = WEAPONS[currentWeapon].name;
       var isSemi2 = wName2 === 'PISTOL' || wName2 === 'DEAGLE' || wName2 === 'SNIPER';
       if (firePressed && !isReloading && !myDead) {
-        var nowMs = performance.now();
         if (isSemi2) {
-          // SEMI: fire once per press — wait for release (firePressed=false) before next shot
-          if (lastShotTime === 0) {
-            shoot();
-            lastShotTime = nowMs;
+          // semi: fire once per press — use a flag to only fire on fresh press
+          if (!semiFired) {
+            shoot(); // rate guard inside will enforce timing
+            semiFired = true;
           }
         } else {
-          // AUTO: fire immediately on press, then at weapon's real interval
-          if (lastShotTime === 0 || (nowMs - lastShotTime) >= WEAPONS[currentWeapon].fireInterval * 1000) {
-            shoot();
-            lastShotTime = nowMs;
-          }
+          shoot(); // rate guard inside shoot() enforces the exact interval
         }
       } else {
-        // button released (or reloading/dead) → reset so next press fires instantly
+        // released → allow next semi shot + reset rate guard so press fires fast
+        semiFired = false;
         lastShotTime = 0;
       }
 
@@ -2786,6 +2792,7 @@
           'pressed: ' + firePressed + '<br>' +
           'lastShot: ' + Math.round(lastShotTime) + 'ms<br>' +
           'shots: ' + shotCount + '<br>' +
+          'blocked: ' + blockedShots + '<br>' +
           'ammo: ' + ammo + '/' + magSize;
       }
       ammoEl.textContent = ammo + ' / ' + magSize;
