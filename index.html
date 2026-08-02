@@ -130,7 +130,15 @@
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
-  <div id="onlineMenu" style="margin-top:20px; display:flex; flex-direction:column; align-items:center; gap:10px;">
+  <div id="botMenu" style="margin-top:14px; display:flex; flex-direction:column; align-items:center; gap:8px;">
+    <div style="font-size:14px; color:#aab; font-weight:bold;">🤖 PLAY VS BOTS</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+      <button class="start-btn" id="bot1Btn" style="padding:8px 16px; font-size:13px; margin-top:0;">1 BOT</button>
+      <button class="start-btn" id="bot3Btn" style="padding:8px 16px; font-size:13px; margin-top:0;">3 BOTS</button>
+      <button class="start-btn" id="bot5Btn" style="padding:8px 16px; font-size:13px; margin-top:0;">5 BOTS</button>
+    </div>
+  </div>
+  <div id="onlineMenu" style="margin-top:14px; display:flex; flex-direction:column; align-items:center; gap:10px;">
     <div style="font-size:15px; color:#aab; font-weight:bold;">🌐 MULTIPLAYER</div>
     <input id="nameInput" placeholder="Your name" maxlength="12" value="" style="padding:10px; font-size:14px; text-align:center; border-radius:6px; border:2px solid #3a4a8a; background:#111; color:#fff; width:70%; max-width:220px;">
     <div style="display:flex; gap:10px;">
@@ -1496,6 +1504,28 @@
         }
       }
     }
+    // ===== check hits against BOTS =====
+    if (bots.length) {
+      // per-weapon damage (same as network)
+      var botDmg = isShotgun ? 25 : isSniper ? 100 : isDeagle ? 40 : isPistol ? 20 : isLMG ? 15 : 25;
+      var aimDir2 = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+      for (var bi = 0; bi < bots.length; bi++) {
+        var bot = bots[bi];
+        if (!bot || bot.dead) continue;
+        var bdx = bot.x - camera.position.x;
+        var bdy = (bot.y + 0.9) - camera.position.y;
+        var bdz = bot.z - camera.position.z;
+        var bdist = Math.sqrt(bdx * bdx + bdy * bdy + bdz * bdz);
+        if (bdist > 40) continue;
+        var toBot = new THREE.Vector3(bdx, bdy, bdz).normalize();
+        var bdot = aimDir2.dot(toBot);
+        var bcone = isShotgun ? 0.985 : 0.99;
+        if (bdot > bcone) {
+          botTakeDamage(bot, botDmg);
+          showHitMarker(false);
+        }
+      }
+    }
     if (pellets > 1 || true) {
       // hit marker on any hit
       var hm = document.getElementById('hitmarker');
@@ -1728,6 +1758,143 @@
   var infoEl = document.getElementById('info');
   var ammoEl = document.getElementById('ammo');
   var reloadBar = document.getElementById('reloadBar');
+
+  /* ===================== BOTS (AI opponents) ===================== */
+  var bots = []; // { group, name, x, y, z, yaw, pitch, hp, dead, respawnTimer, targetYaw, moveTimer, shootTimer, speed }
+  var BOT_NAMES = ['Rex', 'Viper', 'Ghost', 'Hunter', 'Blaze', 'Frost', 'Nova', 'Titan', 'Shadow', 'Raptor'];
+
+  function spawnBot(name) {
+    var group = makePlayerModel();
+    scene.add(group);
+    // red-ish body to distinguish bots from players
+    group.children[0].material.color.set(0x8a2a2a); // body red
+    // set name label
+    var canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.fillStyle = '#ff6666';
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(name, 128, 40);
+    var label = group.userData.label;
+    label.material.map = new THREE.CanvasTexture(canvas);
+    label.material.needsUpdate = true;
+
+    var pt = RESPAWN_POINTS[Math.floor(Math.random() * RESPAWN_POINTS.length)];
+    var bot = {
+      group: group, name: name,
+      x: pt.x, y: 1.7, z: pt.z,
+      yaw: Math.random() * Math.PI * 2, pitch: 0,
+      hp: 100, dead: false, respawnTimer: 0,
+      targetYaw: Math.random() * Math.PI * 2,
+      moveTimer: 2 + Math.random() * 3,
+      shootTimer: 0, speed: 3.5 + Math.random() * 1.5
+    };
+    bots.push(bot);
+    updateHpBar(group, 100, 100);
+    return bot;
+  }
+
+  function removeBots() {
+    for (var i = 0; i < bots.length; i++) {
+      scene.remove(bots[i].group);
+    }
+    bots = [];
+  }
+
+  function botTakeDamage(bot, dmg) {
+    if (!bot || bot.dead) return;
+    bot.hp -= dmg;
+    updateHpBar(bot.group, bot.hp, 100);
+    if (bot.hp <= 0) {
+      bot.dead = true;
+      bot.respawnTimer = 3;
+      bot.group.rotation.x = Math.PI / 2; // fall over
+      bot.group.position.y = 0.3;
+      if (bot.group.userData.hpBar) bot.group.userData.hpBar.visible = false;
+      myKills++;
+      updateMyHud();
+      updatePlayerList();
+    }
+  }
+
+  function botRespawn(bot) {
+    bot.dead = false;
+    bot.hp = 100;
+    var pt = RESPAWN_POINTS[Math.floor(Math.random() * RESPAWN_POINTS.length)];
+    bot.x = pt.x; bot.z = pt.z; bot.y = 1.7;
+    bot.group.position.set(bot.x, bot.y, bot.z);
+    bot.group.rotation.x = 0;
+    bot.group.rotation.y = Math.random() * Math.PI * 2;
+    if (bot.group.userData.hpBar) bot.group.userData.hpBar.visible = true;
+    updateHpBar(bot.group, 100, 100);
+  }
+
+  function updateBots(dt) {
+    for (var i = 0; i < bots.length; i++) {
+      var bot = bots[i];
+      // respawn dead bots
+      if (bot.dead) {
+        bot.respawnTimer -= dt;
+        if (bot.respawnTimer <= 0) botRespawn(bot);
+        continue;
+      }
+      // move toward a wandering target point
+      bot.moveTimer -= dt;
+      if (bot.moveTimer <= 0) {
+        bot.moveTimer = 2 + Math.random() * 3;
+        bot.targetYaw = Math.random() * Math.PI * 2;
+      }
+      // turn toward player if close enough
+      var dx = camera.position.x - bot.x;
+      var dz = camera.position.z - bot.z;
+      var distToPlayer = Math.sqrt(dx * dx + dz * dz);
+      var targetAngle = Math.atan2(dx, dz);
+      // face player if within 20 units and roughly in front
+      if (distToPlayer < 20 && Math.abs(((bot.yaw - targetAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < Math.PI * 0.6) {
+        bot.yaw = targetAngle;
+        // SHOOT at player
+        bot.shootTimer -= dt;
+        if (bot.shootTimer <= 0) {
+          bot.shootTimer = 0.5 + Math.random() * 0.8;
+          // hit chance based on distance
+          var hitChance = Math.max(0.05, 0.5 - distToPlayer * 0.015);
+          if (Math.random() < hitChance) {
+            takeDamage(8 + Math.floor(Math.random() * 7));
+          }
+        }
+      } else {
+        // wander
+        var dy = Math.sin(bot.targetYaw - bot.yaw);
+        bot.yaw += dy * dt * 2;
+        bot.x += Math.sin(bot.yaw) * bot.speed * dt;
+        bot.z += Math.cos(bot.yaw) * bot.speed * dt;
+        // keep in bounds
+        var halfRoom = ROOM / 2 - 1;
+        bot.x = Math.max(-halfRoom, Math.min(halfRoom, bot.x));
+        bot.z = Math.max(-halfRoom, Math.min(halfRoom, bot.z));
+        bot.shootTimer = 0;
+      }
+      // update model position
+      bot.group.position.set(bot.x, bot.y, bot.z);
+      bot.group.rotation.y = bot.yaw;
+    }
+  }
+
+  // ---- Bot menu buttons ----
+  function startWithBots(count) {
+    removeBots();
+    for (var i = 0; i < count; i++) {
+      spawnBot(BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)] + (count > 1 ? ' ' + (i + 1) : ''));
+    }
+    startGame();
+    setStatus('🤖 ' + count + ' bot' + (count > 1 ? 's' : '') + ' — fight!');
+  }
+  document.getElementById('bot1Btn').addEventListener('click', function () { startWithBots(1); });
+  document.getElementById('bot3Btn').addEventListener('click', function () { startWithBots(3); });
+  document.getElementById('bot5Btn').addEventListener('click', function () { startWithBots(5); });
 
   /* ===================== MULTIPLAYER (PeerJS P2P) ===================== */
   var roomCode = null;
@@ -2231,6 +2398,8 @@
 
     // always render scene (even when paused)
     if (gameStarted && !gamePaused) {
+      // ===== bots AI =====
+      if (bots.length) updateBots(dt);
       // ===== respawn countdown (when I'm dead) =====
       if (myDead) {
         respawnTimer -= dt;
