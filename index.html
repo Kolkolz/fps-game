@@ -1396,6 +1396,19 @@
 
   /* ===================== SHOOTING ===================== */
   var bulletHoles = [];
+
+  // per-weapon damage table (sniper 1-shot, AK few shots, pistol many)
+  function weaponDamage() {
+    var n = WEAPONS[currentWeapon].name;
+    if (n === 'SNIPER') return 100;   // 1 shot kill
+    if (n === 'SHOTGUN') return 34;   // 3 shots
+    if (n === 'DEAGLE') return 45;    // 3 shots
+    if (n === 'M4') return 30;        // 4 shots
+    if (n === 'AK-47') return 28;     // 4 shots
+    if (n === 'SMG') return 18;       // 6 shots
+    if (n === 'LMG') return 15;       // 7 shots
+    return 20; // PISTOL: 5 shots
+  }
   function shoot() {
     if (isReloading) return;
     if (myDead) return; // can't shoot while dead
@@ -1424,15 +1437,17 @@
       setTimeout(function () { muzzleFlashMesh.visible = false; }, 50);
     }
 
-    // raycast — shotgun fires a spread of pellets
+    // raycast — shotgun fires a spread of pellets; hip-fire adds inaccuracy
     var euler = new THREE.Euler(pitch, yaw, 0, 'YXZ');
     var pellets = isShotgun ? 6 : 1;
+    // hip-fire spread: big when not aiming, small when ADS
+    var hipSpread = (1 - aimBlend) * 0.06; // radians of random spread when hip-firing
     var meshes = null;
     for (var p = 0; p < pellets; p++) {
       var spread = isShotgun ? (Math.random() - 0.5) * 0.09 : 0;
       var pe = new THREE.Euler(
-        pitch + (Math.random() - 0.5) * (isShotgun ? 0.05 : 0),
-        yaw + spread,
+        pitch + (Math.random() - 0.5) * (isShotgun ? 0.05 : hipSpread),
+        yaw + spread + (Math.random() - 0.5) * hipSpread,
         0, 'YXZ'
       );
       var dir = new THREE.Vector3(0, 0, -1).applyEuler(pe);
@@ -1473,7 +1488,7 @@
     // ===== check hits against remote players (network shooting) =====
     if (myPeer) {
       // per-weapon damage
-      var dmg = isShotgun ? 25 : isSniper ? 100 : isDeagle ? 40 : isPistol ? 20 : isLMG ? 15 : 25;
+      var dmg = weaponDamage();
       for (var rk2 in remotePlayers) {
         var rp2 = remotePlayers[rk2];
         if (!rp2 || rp2.dead) continue; // skip dead players
@@ -1507,7 +1522,7 @@
     // ===== check hits against BOTS =====
     if (bots.length) {
       // per-weapon damage (same as network)
-      var botDmg = isShotgun ? 25 : isSniper ? 100 : isDeagle ? 40 : isPistol ? 20 : isLMG ? 15 : 25;
+      var botDmg = weaponDamage();
       var aimDir2 = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
       for (var bi = 0; bi < bots.length; bi++) {
         var bot = bots[bi];
@@ -1785,7 +1800,7 @@
     var pt = RESPAWN_POINTS[Math.floor(Math.random() * RESPAWN_POINTS.length)];
     var bot = {
       group: group, name: name,
-      x: pt.x, y: 1.7, z: pt.z,
+      x: pt.x, y: 0, z: pt.z,
       yaw: Math.random() * Math.PI * 2, pitch: 0,
       hp: 100, dead: false, respawnTimer: 0,
       targetYaw: Math.random() * Math.PI * 2,
@@ -1824,7 +1839,7 @@
     bot.dead = false;
     bot.hp = 100;
     var pt = RESPAWN_POINTS[Math.floor(Math.random() * RESPAWN_POINTS.length)];
-    bot.x = pt.x; bot.z = pt.z; bot.y = 1.7;
+    bot.x = pt.x; bot.z = pt.z; bot.y = 0;
     bot.group.position.set(bot.x, bot.y, bot.z);
     bot.group.rotation.x = 0;
     bot.group.rotation.y = Math.random() * Math.PI * 2;
@@ -1859,6 +1874,22 @@
         bot.shootTimer -= dt;
         if (bot.shootTimer <= 0) {
           bot.shootTimer = 0.5 + Math.random() * 0.8;
+          // play a gunshot sound (bot's weapon — use AK sound by default)
+          ensureAudio();
+          if (audioCtx && soundBuffers['AK-47']) {
+            var bsrc = audioCtx.createBufferSource();
+            bsrc.buffer = soundBuffers['AK-47'];
+            var bg = audioCtx.createGain();
+            bg.gain.setValueAtTime(0.35, audioCtx.currentTime); // quieter (distant)
+            var bf = audioCtx.createBiquadFilter();
+            bf.type = 'lowpass';
+            bf.frequency.value = 4000;
+            bsrc.connect(bf).connect(bg).connect(audioCtx.destination);
+            bsrc.playbackRate.value = 0.9 + Math.random() * 0.2;
+            bsrc.start();
+          } else {
+            playGunshot(); // fallback
+          }
           // hit chance based on distance
           var hitChance = Math.max(0.05, 0.5 - distToPlayer * 0.015);
           if (Math.random() < hitChance) {
@@ -1930,35 +1961,76 @@
 
   function makePlayerModel() {
     var g = new THREE.Group();
-    // body
+    // ===== BODY (rooted at y=0 — feet on ground) =====
+    // legs (two)
+    var legMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.8 });
+    var legL = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.85, 0.18), legMat);
+    legL.position.set(-0.12, 0.425, 0);
+    g.add(legL);
+    var legR = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.85, 0.18), legMat);
+    legR.position.set(0.12, 0.425, 0);
+    g.add(legR);
+    // boots
+    var bootMat = new THREE.MeshStandardMaterial({ color: 0x2a2a35, roughness: 0.8 });
+    var bootL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), bootMat);
+    bootL.position.set(-0.12, 0.06, 0.05);
+    g.add(bootL);
+    var bootR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), bootMat);
+    bootR.position.set(0.12, 0.06, 0.05);
+    g.add(bootR);
+    // torso
     var body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.3),
       new THREE.MeshStandardMaterial({ color: 0x2a6e2a, roughness: 0.8 }));
-    body.position.y = 0.85;
+    body.position.y = 1.2;
     g.add(body);
+    // arms
+    var armMat = new THREE.MeshStandardMaterial({ color: 0x2a6e2a, roughness: 0.8 });
+    var armL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.65, 0.16), armMat);
+    armL.position.set(-0.33, 1.15, 0);
+    g.add(armL);
+    var armR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.65, 0.16), armMat);
+    armR.position.set(0.33, 1.15, 0);
+    g.add(armR);
+    // hands
+    var handMat = new THREE.MeshStandardMaterial({ color: 0xd9a06b, roughness: 0.85 });
+    var handL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), handMat);
+    handL.position.set(-0.33, 0.8, 0);
+    g.add(handL);
+    var handR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), handMat);
+    handR.position.set(0.33, 0.8, 0);
+    g.add(handR);
     // head
     var head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.28),
       new THREE.MeshStandardMaterial({ color: 0xd9a06b, roughness: 0.8 }));
-    head.position.y = 1.5;
+    head.position.y = 1.78;
     g.add(head);
-    // gun barrel indicator (front)
-    var gun = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.5),
+    // ===== WEAPON in hands (bot's gun — visible) =====
+    var gunGroup2 = new THREE.Group();
+    var gun = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.55),
       new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.7 }));
-    gun.position.set(0, 1.25, -0.35);
-    g.add(gun);
+    gun.position.set(0, 0, -0.2);
+    gunGroup2.add(gun);
+    // stock hint
+    var stock = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.15),
+      new THREE.MeshStandardMaterial({ color: 0x6b4f28, roughness: 0.8 }));
+    stock.position.set(0, -0.02, 0.15);
+    gunGroup2.add(stock);
+    gunGroup2.position.set(0.28, 1.2, -0.25);
+    gunGroup2.rotation.x = 0.1;
+    g.add(gunGroup2);
+    g.userData.botGun = gunGroup2; // reference for aiming the gun
 
     // ===== HP bar (above head) =====
     var barGroup = new THREE.Group();
-    // background
     var bg = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.09),
       new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.8, depthTest: false }));
     bg.position.y = 0.045;
     barGroup.add(bg);
-    // green HP fill
     var fill = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.05),
       new THREE.MeshBasicMaterial({ color: 0x4ade80, depthTest: false }));
     fill.position.y = 0.045;
     barGroup.add(fill);
-    barGroup.position.y = 1.85;
+    barGroup.position.y = 2.15;
     barGroup.userData.fill = fill;
     g.add(barGroup);
 
@@ -1975,7 +2047,7 @@
     var tex = new THREE.CanvasTexture(canvas);
     var label = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.2),
       new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false }));
-    label.position.y = 2.1;
+    label.position.y = 2.4;
     g.add(label);
 
     g.userData.hpBar = barGroup;
@@ -2139,7 +2211,7 @@
       if (rpd) {
         rpd.dead = true;
         rpd.group.rotation.x = Math.PI / 2; // fall over
-        rpd.group.position.y = 0.3;
+        rpd.group.position.y = 0;
         if (rpd.group.userData.hpBar) rpd.group.userData.hpBar.visible = false;
       }
     } else if (data.t === 'respawn') {
@@ -2149,7 +2221,7 @@
         rpr.dead = false;
         rpr.hp = 100;
         rpr.group.rotation.x = 0;
-        rpr.group.position.y = 1.7;
+        rpr.group.position.y = 0;
         if (rpr.group.userData.hpBar) rpr.group.userData.hpBar.visible = true;
         updateHpBar(rpr.group, 100, 100);
       }
@@ -2269,7 +2341,7 @@
     label.material.needsUpdate = true;
     remotePlayers[peerId] = {
       group: group, name: name, nameLabel: label,
-      x: 0, y: 1.7, z: 0, yaw: 0, pitch: 0,
+      x: 0, y: 0, z: 0, yaw: 0, pitch: 0,
       hp: 100, dead: false
     };
     setStatus('🎮 ' + Object.keys(remotePlayers).length + ' online');
