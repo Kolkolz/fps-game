@@ -1963,7 +1963,7 @@
   function makePlayerModel() {
     var g = new THREE.Group();
     // ===== BODY (rooted at y=0 — feet on ground) =====
-    // legs (two)
+    // legs (two, darker pants)
     var legMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.8 });
     var legL = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.85, 0.18), legMat);
     legL.position.set(-0.12, 0.425, 0);
@@ -1979,45 +1979,100 @@
     var bootR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), bootMat);
     bootR.position.set(0.12, 0.06, 0.05);
     g.add(bootR);
-    // torso
-    var body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.3),
+    // belt hint
+    var belt = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.06, 0.32),
+      new THREE.MeshStandardMaterial({ color: 0x22222a, roughness: 0.7 }));
+    belt.position.y = 0.92;
+    g.add(belt);
+    // torso (vest look)
+    var body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.62, 0.3),
       new THREE.MeshStandardMaterial({ color: 0x2a6e2a, roughness: 0.8 }));
-    body.position.y = 1.2;
+    body.position.y = 1.27;
     g.add(body);
-    // arms
+    // tactical vest (chest plate)
+    var vest = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.3, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0x1f4d1f, roughness: 0.85 }));
+    vest.position.set(0, 1.35, 0.18);
+    g.add(vest);
+    // shoulders (pads)
+    var padMat = new THREE.MeshStandardMaterial({ color: 0x1f4d1f, roughness: 0.85 });
+    var padL = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.1, 0.2), padMat);
+    padL.position.set(-0.27, 1.55, 0);
+    g.add(padL);
+    var padR = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.1, 0.2), padMat);
+    padR.position.set(0.27, 1.55, 0);
+    g.add(padR);
+    // arms (sleeves)
     var armMat = new THREE.MeshStandardMaterial({ color: 0x2a6e2a, roughness: 0.8 });
-    var armL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.65, 0.16), armMat);
+    var armL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.6, 0.16), armMat);
     armL.position.set(-0.33, 1.15, 0);
     g.add(armL);
-    var armR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.65, 0.16), armMat);
+    var armR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.6, 0.16), armMat);
     armR.position.set(0.33, 1.15, 0);
     g.add(armR);
     // hands
     var handMat = new THREE.MeshStandardMaterial({ color: 0xd9a06b, roughness: 0.85 });
     var handL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), handMat);
-    handL.position.set(-0.33, 0.8, 0);
+    handL.position.set(-0.33, 0.82, 0);
     g.add(handL);
     var handR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), handMat);
-    handR.position.set(0.33, 0.8, 0);
+    handR.position.set(0.33, 0.82, 0);
     g.add(handR);
     // head
     var head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.28),
       new THREE.MeshStandardMaterial({ color: 0xd9a06b, roughness: 0.8 }));
     head.position.y = 1.78;
     g.add(head);
-    // ===== WEAPON in hands (bot's gun — visible) =====
+    // helmet
+    var helmet = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x1f4d1f, roughness: 0.7, metalness: 0.2 }));
+    helmet.position.y = 1.95;
+    g.add(helmet);
+    // face hint (visor/nose)
+    var face = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.02),
+      new THREE.MeshStandardMaterial({ color: 0xb08050, roughness: 0.8 }));
+    face.position.set(0, 1.8, 0.14);
+    g.add(face);
+    // ===== WEAPON in hands (bot's gun — detailed AK-style) =====
     var gunGroup2 = new THREE.Group();
-    var gun = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.55),
-      new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.7 }));
-    gun.position.set(0, 0, -0.2);
-    gunGroup2.add(gun);
-    // stock hint
-    var stock = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.15),
-      new THREE.MeshStandardMaterial({ color: 0x6b4f28, roughness: 0.8 }));
-    stock.position.set(0, -0.02, 0.15);
-    gunGroup2.add(stock);
-    gunGroup2.position.set(0.28, 1.2, -0.25);
-    gunGroup2.rotation.x = 0.1;
+    var gunMetal = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.7 });
+    // barrel (long)
+    var barrel2 = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.5, 8), gunMetal);
+    barrel2.rotation.x = Math.PI / 2;
+    barrel2.position.set(0, 0.02, -0.25);
+    gunGroup2.add(barrel2);
+    // receiver/body
+    var receiver2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.24), gunMetal);
+    receiver2.position.set(0, 0.02, 0.05);
+    gunGroup2.add(receiver2);
+    // wooden handguard
+    var hg2 = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.045, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.8 }));
+    hg2.position.set(0, 0.0, -0.08);
+    gunGroup2.add(hg2);
+    // magazine (curved hint)
+    var mag2 = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.1, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 }));
+    mag2.position.set(0, -0.06, 0.04);
+    mag2.rotation.x = 0.15;
+    gunGroup2.add(mag2);
+    // wooden stock
+    var stock2 = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.055, 0.14),
+      new THREE.MeshStandardMaterial({ color: 0x6e4520, roughness: 0.8 }));
+    stock2.position.set(0, -0.01, 0.17);
+    gunGroup2.add(stock2);
+    // pistol grip
+    var grip2 = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.07, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 }));
+    grip2.position.set(0, -0.055, 0.12);
+    grip2.rotation.x = 0.3;
+    gunGroup2.add(grip2);
+    // front sight
+    var fs2 = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.03, 0.012), gunMetal);
+    fs2.position.set(0, 0.06, -0.3);
+    gunGroup2.add(fs2);
+    gunGroup2.position.set(0.3, 1.3, -0.3);
+    gunGroup2.rotation.x = 0.05;
     g.add(gunGroup2);
     g.userData.botGun = gunGroup2; // reference for aiming the gun
 
