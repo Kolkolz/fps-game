@@ -2718,21 +2718,13 @@
 
       // auto-fire using REAL TIME (immune to FPS/frame-rate entirely)
       var isSemi = WEAPONS[currentWeapon].name === 'PISTOL' || WEAPONS[currentWeapon].name === 'DEAGLE' || WEAPONS[currentWeapon].name === 'SNIPER';
-      if (firing && !isReloading) {
+      if (firing && !isReloading && !myDead) {
         var now = performance.now();
-        if (!isSemi) {
-          if (lastShotTime === 0) lastShotTime = now;
-          if (now - lastShotTime >= WEAPONS[currentWeapon].fireInterval * 1000) {
-            shoot();
-            lastShotTime = now;
-            if (ammo <= 0) lastShotTime = 0; // trigger reload immediately on empty
-          }
-        } else {
-          // semi-auto: fire once per press
-          if (lastShotTime === 0 || now - lastShotTime >= 300) {
-            shoot();
-            lastShotTime = now;
-          }
+        // fire immediately on first press, then respect the weapon's real interval
+        var intervalMs = isSemi ? 300 : WEAPONS[currentWeapon].fireInterval * 1000;
+        if (lastShotTime === 0 || now - lastShotTime >= intervalMs) {
+          shoot();
+          lastShotTime = now;
         }
       } else {
         lastShotTime = 0;
