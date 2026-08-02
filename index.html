@@ -166,7 +166,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v11</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v12</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -3872,7 +3872,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v11'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v12'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -4917,14 +4917,14 @@
   //   LMG:     sight y=0.09,  adsScale 0.85 → adsY ≈ -0.077
   // Gun pushed forward + small scale → body stays BELOW the sight line
   var WEAPONS = [
-    { name: 'AK-47', magSize: 30, fireInterval: 0.11, pellets: 1, spread: 0.045, recoil: 1.0, damage: 28, reloadTime: 1.8, build: buildAK47, flashScale: 0.6, adsX: 0, adsY: -0.081, adsZ: -0.6, adsScale: 0.85 },
-    { name: 'SHOTGUN', magSize: 8, fireInterval: 0.9, pellets: 6, spread: 0.09, recoil: 1.6, damage: 34, reloadTime: 2.2, build: buildShotgun, flashScale: 0.9, adsX: 0, adsY: -0.05, adsZ: -0.56, adsScale: 0.9 },
-    { name: 'PISTOL', magSize: 12, fireInterval: 0.35, pellets: 1, spread: 0.035, recoil: 0.5, damage: 20, reloadTime: 1.2, build: buildPistol, flashScale: 0.4, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
-    { name: 'SMG', magSize: 40, fireInterval: 0.1, pellets: 1, spread: 0.08, recoil: 0.6, damage: 18, reloadTime: 1.6, build: buildSMG, flashScale: 0.5, adsX: 0, adsY: -0.077, adsZ: -0.55, adsScale: 0.9 },
-    { name: 'SNIPER', magSize: 5, fireInterval: 1.2, pellets: 1, spread: 0.005, recoil: 2.2, damage: 100, reloadTime: 2.8, build: buildSniper, flashScale: 0.5, adsX: 0, adsY: -0.081, adsZ: -0.58, adsScale: 0.9 },
-    { name: 'DEAGLE', magSize: 8, fireInterval: 0.5, pellets: 1, spread: 0.03, recoil: 1.5, damage: 45, reloadTime: 1.8, build: buildDeagle, flashScale: 0.5, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
-    { name: 'M4', magSize: 30, fireInterval: 0.1, pellets: 1, spread: 0.03, recoil: 0.8, damage: 30, reloadTime: 1.7, build: buildM4, flashScale: 0.55, adsX: 0, adsY: -0.077, adsZ: -0.57, adsScale: 0.85 },
-    { name: 'LMG', magSize: 100, fireInterval: 0.12, pellets: 1, spread: 0.07, recoil: 0.8, damage: 15, reloadTime: 3.2, build: buildLMG, flashScale: 0.6, adsX: 0, adsY: -0.077, adsZ: -0.58, adsScale: 0.85 }
+    { name: 'AK-47', magSize: 30, fireInterval: 0.10, pellets: 1, spread: 0.05, recoil: 1.1, damage: 30, reloadTime: 2.0, build: buildAK47, flashScale: 0.6, adsX: 0, adsY: -0.081, adsZ: -0.6, adsScale: 0.85 },
+    { name: 'SHOTGUN', magSize: 8, fireInterval: 0.85, pellets: 8, spread: 0.08, recoil: 1.8, damage: 40, reloadTime: 2.4, build: buildShotgun, flashScale: 0.9, adsX: 0, adsY: -0.05, adsZ: -0.56, adsScale: 0.9 },
+    { name: 'PISTOL', magSize: 12, fireInterval: 0.30, pellets: 1, spread: 0.025, recoil: 0.5, damage: 22, reloadTime: 1.4, build: buildPistol, flashScale: 0.4, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
+    { name: 'SMG', magSize: 30, fireInterval: 0.08, pellets: 1, spread: 0.06, recoil: 0.6, damage: 16, reloadTime: 1.9, build: buildSMG, flashScale: 0.5, adsX: 0, adsY: -0.077, adsZ: -0.55, adsScale: 0.9 },
+    { name: 'SNIPER', magSize: 5, fireInterval: 1.35, pellets: 1, spread: 0.003, recoil: 2.4, damage: 100, reloadTime: 3.0, build: buildSniper, flashScale: 0.5, adsX: 0, adsY: -0.081, adsZ: -0.58, adsScale: 0.9 },
+    { name: 'DEAGLE', magSize: 7, fireInterval: 0.40, pellets: 1, spread: 0.04, recoil: 1.7, damage: 50, reloadTime: 1.6, build: buildDeagle, flashScale: 0.5, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
+    { name: 'M4', magSize: 30, fireInterval: 0.09, pellets: 1, spread: 0.02, recoil: 0.7, damage: 26, reloadTime: 2.0, build: buildM4, flashScale: 0.55, adsX: 0, adsY: -0.077, adsZ: -0.57, adsScale: 0.85 },
+    { name: 'LMG', magSize: 100, fireInterval: 0.11, pellets: 1, spread: 0.07, recoil: 0.9, damage: 20, reloadTime: 3.6, build: buildLMG, flashScale: 0.6, adsX: 0, adsY: -0.077, adsZ: -0.58, adsScale: 0.85 }
   ];
   var currentWeapon = 0;
   var ammo = WEAPONS[0].magSize, magSize = WEAPONS[0].magSize;
