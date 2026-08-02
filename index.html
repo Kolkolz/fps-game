@@ -22,11 +22,14 @@
 
   /* ===== RED DOT SIGHT (for all guns except sniper) ===== */
   #redDot { position: absolute; top: 50%; left: 50%; display: none; pointer-events: none; width: 0; height: 0; }
-  #redDot .hood { position: absolute; width: 70px; height: 52px; border: 3px solid rgba(10,10,10,0.95); border-radius: 8px 8px 30px 30px; transform: translate(-50%, -50%); background: rgba(0,0,0,0.35); box-shadow: 0 0 0 1px rgba(255,255,255,0.2), 0 0 12px rgba(0,0,0,0.5); }
-  #redDot .dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #ff2a2a; left: 50%; top: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 6px 2px rgba(255,40,40,0.9), 0 0 14px 4px rgba(255,40,40,0.5); }
-  #redDot .glass { position: absolute; top: 50%; left: 50%; width: 46px; height: 22px; transform: translate(-50%, -50%); border: 2px solid rgba(10,10,10,0.9); border-radius: 8px; background: rgba(20,20,30,0.35); box-shadow: inset 0 0 6px rgba(0,0,0,0.6); }
-  #redDot.new .dot { background: #ff2a2a; }
-  #redDot.green .dot { background: #2aff4a; box-shadow: 0 0 6px 2px rgba(42,255,74,0.9), 0 0 14px 4px rgba(42,255,74,0.5); }
+  #redDot .ring { position: absolute; width: 96px; height: 96px; border: 4px solid rgba(8,8,8,0.95); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 1.5px rgba(255,255,255,0.25), inset 0 0 12px rgba(0,0,0,0.6); background: radial-gradient(circle, rgba(0,0,0,0.05) 55%, rgba(0,0,0,0.5) 100%); }
+  #redDot .cap { position: absolute; width: 56px; height: 6px; border-radius: 3px; background: rgba(10,10,10,0.95); left: 50%; bottom: 10px; transform: translateX(-50%); }
+  #redDot .dot { position: absolute; width: 7px; height: 7px; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  #redDot.red .dot { background: #ff2a2a; box-shadow: 0 0 8px 3px rgba(255,40,40,0.95), 0 0 18px 6px rgba(255,40,40,0.5); }
+  #redDot.green .dot { background: #2aff4a; box-shadow: 0 0 8px 3px rgba(42,255,74,0.95), 0 0 18px 6px rgba(42,255,74,0.5); }
+  #redDot .base { position: absolute; width: 34px; height: 18px; border: 3px solid rgba(8,8,8,0.95); border-radius: 6px 6px 0 0; left: 50%; bottom: 0; transform: translateX(-50%); background: rgba(20,20,20,0.8); }
+  /* small red dot marker ON the gun model (hip-fire) */
+  #gunDot { position: absolute; width: 5px; height: 5px; border-radius: 50%; pointer-events: none; }
   /* ===== Sniper scope overlay (2D) ===== */
   #scopeOverlay { position: absolute; top: 50%; left: 50%; width: 100vmin; height: 100vmin; display: none; pointer-events: none; border-radius: 50%; transform: translate(-50%, -50%); }
   #scopeOverlay .lens { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(0,0,0,0.02) 55%, rgba(0,0,0,0.85) 78%, rgba(0,0,0,0.98) 100%); box-shadow: 0 0 0 3px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.8); }
@@ -106,7 +109,10 @@
   <div id="crosshair">+</div>
   <div id="aimOverlay"></div>
   <div id="adsSight"><div class="ring"></div><div class="post"></div></div>
-  <div id="redDot"><div class="hood"></div><div class="glass"></div><div class="dot"></div></div>
+  <div id="redDot"><div class="ring"></div><div class="dot"></div><div class="cap"></div><div class="base"></div></div>
+  <div style="position:absolute; top:0; left:0; pointer-events:none; z-index:20;">
+    <div id="gunDot"></div>
+  </div>
   <div id="scopeOverlay"><div class="lens"></div><div class="crosshair"></div><div class="dot"></div></div>
   <div id="info">FPS: 0</div>
   <div id="myHud" style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.45); padding:8px 12px; border-radius:8px; font-family:monospace; color:#fff;">
@@ -136,7 +142,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v3</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v4</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -206,7 +212,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v3'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v4'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -2689,17 +2695,25 @@
       camera.fov = hipFov + (adsFov - hipFov) * aimEase;
       camera.updateProjectionMatrix();
 
-      // ===== ADS: 3D gun rises up to the red-dot/scope, smoothly =====
-      // gun slowly rises toward center as aimEase → 1 (smooth, not abrupt)
+      // ===== ADS: gun smoothly rises to center & the red-dot takes over =====
+      // For sniper, the gun drops OUT of the scope so the lens stays clear.
+      // For all others, the gun rises to meet the red dot — continuous, no cut.
       var w = WEAPONS[currentWeapon];
       var gScale = 2.2 + (w.adsScale - 2.2) * aimEase;
       gunGroup.scale.set(gScale, gScale, gScale);
-      // rise from hip (low-right) up toward center
       var gx = 0.32 + (w.adsX - 0.32) * aimEase;
-      var gy = -0.32 + (w.adsY + 0.32) * aimEase;
+      var gy = -0.32 + ((isSniper ? w.adsY : -0.02) + 0.32) * aimEase;
       var gz = -0.55 + (w.adsZ + 0.55) * aimEase;
       var aimTilt = -0.02 * aimEase;
-      gunGroup.position.set(gx + bobX * (1 - aimEase), gy + bobY * (1 - aimEase), gz + gunRecoil * 0.06);
+      if (isSniper) {
+        // scope needs a clear lens → gun sinks below as you zoom in
+        var sinkY = -aimEase * 1.1;
+        var sinkZ = -aimEase * 0.2;
+        gunGroup.position.set(gx + bobX * (1 - aimEase), gy + sinkY + bobY * (1 - aimEase), gz + sinkZ + gunRecoil * 0.06);
+      } else {
+        // red-dot sight: gun rises to center where the dot is
+        gunGroup.position.set(gx + bobX * (1 - aimEase), gy + bobY * (1 - aimEase), gz + gunRecoil * 0.06);
+      }
       gunGroup.rotation.set(recPitch, aimTilt, 0);
 
       // crosshair fades out while aiming
@@ -2709,22 +2723,23 @@
 
       // 2D sight: sniper gets a scope; all others get a red dot sight
       var weaponName = WEAPONS[currentWeapon].name;
-      // isSniper already defined above (line ~2711)
+      // isSniper already defined above (line ~2698)
       var adsSight = document.getElementById('adsSight');
       var redDot = document.getElementById('redDot');
       var scopeOverlay = document.getElementById('scopeOverlay');
-      // red dot color varies slightly per gun (green for AK/SMG, red default)
-      redDot.className = (weaponName === 'AK-47' || weaponName === 'SMG' || weaponName === 'LMG') ? 'redDot green' : 'redDot';
+      // red dot color varies per gun
+      var dotColorClass = (weaponName === 'AK-47' || weaponName === 'SMG' || weaponName === 'LMG') ? 'green' : 'red';
+      redDot.className = 'redDot ' + dotColorClass;
       var showDot = !isSniper && aimEase > 0.02;
       adsSight.style.display = 'none';
       scopeOverlay.style.display = (isSniper && aimEase > 0.02) ? 'block' : 'none';
       redDot.style.display = showDot ? 'block' : 'none';
-      var adsOpacity = Math.min(1, aimEase * 1.6);
+      var adsOpacity = Math.min(1, aimEase * 1.5);
       if (isSniper) scopeOverlay.style.opacity = adsOpacity;
       else redDot.style.opacity = adsOpacity;
-      var adsScale = 0.8 + 0.2 * aimEase; // sight settles into focus
+      var adsScale = 0.85 + 0.15 * aimEase;
       redDot.style.transform = 'translate(-50%, -50%) scale(' + adsScale + ')';
-      scopeOverlay.style.transform = 'translate(-50%, -50%) scale(' + (0.92 + 0.08 * aimEase) + ')';
+      scopeOverlay.style.transform = 'translate(-50%, -50%) scale(' + (0.92 + 0.08 * aimEase) + ')'
 
       // vignette overlay
       var overlay = document.getElementById('aimOverlay');
