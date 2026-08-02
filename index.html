@@ -46,14 +46,22 @@
   #redDot .mount { position: absolute; left: 50%; top: 50%; width: 36px; height: 10px; transform: translate(-50%, calc(-50% + 34px)); background: linear-gradient(#2a2a2a, #111); border-radius: 2px; border: 1px solid #000; }
   /* small red dot marker ON the gun model (hip-fire) */
   #gunDot { position: absolute; width: 5px; height: 5px; border-radius: 50%; pointer-events: none; }
-  /* ===== Sniper scope overlay (2D) ===== */
-  #scopeOverlay { position: absolute; top: 50%; left: 50%; width: 100vmin; height: 100vmin; display: none; pointer-events: none; border-radius: 50%; transform: translate(-50%, -50%); }
-  #scopeOverlay .lens { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(0,0,0,0.02) 55%, rgba(0,0,0,0.85) 78%, rgba(0,0,0,0.98) 100%); box-shadow: 0 0 0 3px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.8); }
+  /* ===== Sniper scope (PUBG-style) ===== */
+  #scopeOverlay { position: absolute; top: 50%; left: 50%; width: 96vmin; height: 96vmin; display: none; pointer-events: none; border-radius: 50%; transform: translate(-50%, -50%); }
+  /* outer dark ring + lens */
+  #scopeOverlay .lens { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(0,0,0,0.0) 58%, rgba(0,0,0,0.75) 80%, rgba(0,0,0,0.97) 96%); box-shadow: 0 0 0 2px rgba(0,0,0,0.95), inset 0 0 40px rgba(0,0,0,0.5); }
+  /* thin scope edge ring */
+  #scopeOverlay .edge { position: absolute; inset: 1%; border-radius: 50%; border: 3px solid rgba(15,15,15,0.95); box-shadow: 0 0 0 1px rgba(255,255,255,0.2); }
+  /* fine crosshair (thin, dark, subtle) */
   #scopeOverlay .crosshair { position: absolute; inset: 0; }
-  #scopeOverlay .crosshair::before, #scopeOverlay .crosshair::after { content: ''; position: absolute; background: rgba(0,0,0,0.95); box-shadow: 0 0 0 1px rgba(255,255,255,0.28); }
-  #scopeOverlay .crosshair::before { left: 50%; top: 4%; width: 3px; height: 92%; transform: translateX(-50%); }
-  #scopeOverlay .crosshair::after { top: 50%; left: 4%; height: 3px; width: 92%; transform: translateY(-50%); }
-  #scopeOverlay .dot { position: absolute; top: 50%; left: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: rgba(0,0,0,0.95); box-shadow: 0 0 0 1.5px rgba(255,255,255,0.4); }
+  #scopeOverlay .crosshair::before, #scopeOverlay .crosshair::after { content: ''; position: absolute; background: rgba(5,5,5,0.9); box-shadow: 0 0 0 0.5px rgba(255,255,255,0.35); }
+  #scopeOverlay .crosshair::before { left: 50%; top: 6%; width: 1.5px; height: 88%; transform: translateX(-50%); }
+  #scopeOverlay .crosshair::after { top: 50%; left: 6%; height: 1.5px; width: 88%; transform: translateY(-50%); }
+  /* center dot */
+  #scopeOverlay .dot { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(0,0,0,0.9); box-shadow: 0 0 0 1px rgba(255,255,255,0.35); }
+  /* milliradian tick marks (PUBG scope reticle) */
+  #scopeOverlay .tick { position: absolute; top: 50%; left: 50%; width: 1px; height: 1px; background: rgba(0,0,0,0.0); }
+  #scopeOverlay .tick i { position: absolute; display: block; width: 2px; height: 12px; background: rgba(5,5,5,0.85); box-shadow: 0 0 0 .5px rgba(255,255,255,0.3); }
   #info { position: absolute; top: 12px; left: 12px; color: #fff; font-size: 13px; font-family: monospace; text-shadow: 0 1px 3px rgba(0,0,0,0.8); background: rgba(0,0,0,0.35); padding: 6px 10px; border-radius: 6px; line-height: 1.5; }
   #ammo { position: absolute; bottom: 24px; right: 24px; color: #fff; font-size: 42px; font-weight: bold; font-family: monospace; text-shadow: 0 2px 6px rgba(0,0,0,0.9); }
 #gunLabel { position: absolute; bottom: 78px; right: 24px; color: #ffd700; font-size: 15px; font-weight: bold; font-family: monospace; text-shadow: 0 2px 6px rgba(0,0,0,0.9); letter-spacing: 1px; }
@@ -129,7 +137,7 @@
   <div style="position:absolute; top:0; left:0; pointer-events:none; z-index:20;">
     <div id="gunDot"></div>
   </div>
-  <div id="scopeOverlay"><div class="lens"></div><div class="crosshair"></div><div class="dot"></div></div>
+  <div id="scopeOverlay"><div class="lens"></div><div class="edge"></div><div class="crosshair"></div><div class="dot"></div><div class="tick" id="scopeTicks"></div></div>
   <div id="info">FPS: 0</div>
   <div id="myHud" style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.45); padding:8px 12px; border-radius:8px; font-family:monospace; color:#fff;">
     <div style="font-size:13px; margin-bottom:4px;">⚔️ <span id="myKillsLabel">0</span> | 💀 <span id="myDeathsLabel">0</span></div>
@@ -158,7 +166,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v8</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v9</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -228,7 +236,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v8'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v9'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -1689,6 +1697,28 @@
     gamePaused = false;
     blocker.style.display = 'none';
     hud.style.display = 'block';
+    // build PUBG-style scope tick marks (mil-dot reticle on 4 directions)
+    (function () {
+      var ticks = document.getElementById('scopeTicks');
+      if (ticks && !ticks.childElementCount) {
+        var dirs = [
+          { r: -90, top: '36%' }, { r: 90, top: '64%' },
+          { r: 0, left: '36%', top: '50%' }, { r: 180, left: '64%', top: '50%' }
+        ];
+        for (var d = 0; d < dirs.length; d++) {
+          var tt = document.createElement('div');
+          tt.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(' + dirs[d].r + 'deg);';
+          for (var k = 0; k < 3; k++) {
+            var i = document.createElement('i');
+            i.style.cssText = 'position:absolute;top:-18px;left:-1px;width:2px;height:12px;background:rgba(5,5,5,0.85);box-shadow:0 0 0 .5px rgba(255,255,255,0.3);';
+            i.style.top = (-18 - k * 14) + 'px';
+            tt.appendChild(i);
+          }
+          ticks.appendChild(tt);
+        }
+        ticks.__built = true;
+      }
+    })();
     // show landscape prompt on mobile portrait AFTER game starts
     document.querySelector('.landscape-prompt').classList.add('show');
     if (isMobile) {
