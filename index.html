@@ -1200,6 +1200,7 @@
   var keys = {};
   var isReloading = false;
   var reloadTime = 1.6, reloadTimer = 0, reloadEndTime = 0;
+  var reloadAnim = 0; // 0 = normal, animates down/up during reload
   var fireTimer = 0; // auto-fire cadence timer
   var gunBob = 0;
   var gunRecoil = 0;
@@ -1329,43 +1330,88 @@
     if (!audioCtx) return;
     var t = audioCtx.currentTime;
     var wName = WEAPONS[currentWeapon].name;
-    var isPistol = wName === 'PISTOL';
+    var isPistol = wName === 'PISTOL' || wName === 'DEAGLE';
     var isSniper = wName === 'SNIPER';
+    var isShotgun = wName === 'SHOTGUN';
+    var isLMG = wName === 'LMG';
+    var isSMG = wName === 'SMG';
 
-    // slide / bolt rack (short noise burst)
-    var src = audioCtx.createBufferSource();
-    src.buffer = noiseBuffer(0.12);
-    var hp = audioCtx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.value = 1000;
-    var g = audioCtx.createGain();
-    g.gain.setValueAtTime(0.001, t + (isPistol ? 0.05 : 0.1));
-    g.gain.linearRampToValueAtTime(isPistol ? 0.16 : 0.22, t + (isPistol ? 0.09 : 0.15));
-    g.gain.linearRampToValueAtTime(0.001, t + (isPistol ? 0.16 : 0.25));
-    src.connect(hp).connect(g).connect(audioCtx.destination);
-    src.start(t + (isPistol ? 0.05 : 0.1));
+    // ===== STEP 1: drop old magazine / pump (t+0.0s) =====
+    var drop = audioCtx.createBufferSource();
+    drop.buffer = noiseBuffer(0.08);
+    var dp = audioCtx.createBiquadFilter();
+    dp.type = 'bandpass';
+    dp.frequency.value = isShotgun ? 400 : isSniper ? 600 : 900;
+    dp.Q.value = 1.2;
+    var gd = audioCtx.createGain();
+    gd.gain.setValueAtTime(0.0001, t);
+    gd.gain.linearRampToValueAtTime(isShotgun ? 0.25 : 0.18, t + 0.04);
+    gd.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    drop.connect(dp).connect(gd).connect(audioCtx.destination);
+    drop.start(t);
 
-    // magazine insert click
+    // ===== STEP 2: insert new magazine (t+0.4s) =====
+    var insert = audioCtx.createBufferSource();
+    insert.buffer = noiseBuffer(0.06);
+    var ip = audioCtx.createBiquadFilter();
+    ip.type = 'highpass';
+    ip.frequency.value = isShotgun ? 700 : isSniper ? 500 : 1500;
+    var gi = audioCtx.createGain();
+    gi.gain.setValueAtTime(0.0001, t + 0.4);
+    gi.gain.linearRampToValueAtTime(isPistol ? 0.15 : 0.22, t + 0.43);
+    gi.gain.exponentialRampToValueAtTime(0.001, t + 0.52);
+    insert.connect(ip).connect(gi).connect(audioCtx.destination);
+    insert.start(t + 0.4);
+    // click on insert
     var osc = audioCtx.createOscillator();
     osc.type = 'square';
-    osc.frequency.value = isSniper ? 500 : 900;
+    osc.frequency.value = isShotgun ? 350 : isSniper ? 400 : isPistol ? 1200 : 800;
     var g2 = audioCtx.createGain();
-    g2.gain.setValueAtTime(0.0001, t + 0.4);
-    g2.gain.linearRampToValueAtTime(isSniper ? 0.12 : 0.18, t + 0.42);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.48);
+    g2.gain.setValueAtTime(0.0001, t + 0.43);
+    g2.gain.linearRampToValueAtTime(isPistol ? 0.1 : 0.16, t + 0.46);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.52);
     osc.connect(g2).connect(audioCtx.destination);
-    osc.start(t + 0.4); osc.stop(t + 0.5);
+    osc.start(t + 0.43); osc.stop(t + 0.53);
 
-    // chamber / bolt close (metallic clank)
+    // ===== STEP 3: bolt / slide / pump close (t+0.7s) =====
+    var bolt = audioCtx.createBufferSource();
+    bolt.buffer = noiseBuffer(0.1);
+    var bp2 = audioCtx.createBiquadFilter();
+    bp2.type = 'bandpass';
+    bp2.frequency.value = isShotgun ? 250 : isSniper ? 300 : 700;
+    bp2.Q.value = 0.8;
+    var gb = audioCtx.createGain();
+    var boltTime = isShotgun ? 0.6 : 0.7;
+    gb.gain.setValueAtTime(0.0001, t + boltTime);
+    gb.gain.linearRampToValueAtTime(isShotgun ? 0.3 : isSniper ? 0.28 : 0.2, t + boltTime + 0.06);
+    gb.gain.exponentialRampToValueAtTime(0.001, t + boltTime + 0.18);
+    bolt.connect(bp2).connect(gb).connect(audioCtx.destination);
+    bolt.start(t + boltTime);
+    // metallic clank
     var osc2 = audioCtx.createOscillator();
     osc2.type = 'triangle';
-    osc2.frequency.value = isSniper ? 220 : 400;
+    osc2.frequency.value = isShotgun ? 180 : isSniper ? 200 : isPistol ? 900 : 400;
     var g3 = audioCtx.createGain();
-    g3.gain.setValueAtTime(0.0001, t + 0.55);
-    g3.gain.linearRampToValueAtTime(isSniper ? 0.28 : 0.2, t + 0.6);
-    g3.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
+    g3.gain.setValueAtTime(0.0001, t + boltTime + 0.05);
+    g3.gain.linearRampToValueAtTime(isSniper ? 0.25 : 0.18, t + boltTime + 0.1);
+    g3.gain.exponentialRampToValueAtTime(0.001, t + boltTime + 0.2);
     osc2.connect(g3).connect(audioCtx.destination);
-    osc2.start(t + 0.55); osc2.stop(t + 0.78);
+    osc2.start(t + boltTime + 0.05); osc2.stop(t + boltTime + 0.22);
+
+    // ===== LMG: extra belt feed sound =====
+    if (isLMG) {
+      var belt = audioCtx.createBufferSource();
+      belt.buffer = noiseBuffer(0.15);
+      var bf2 = audioCtx.createBiquadFilter();
+      bf2.type = 'lowpass';
+      bf2.frequency.value = 1200;
+      var gb2 = audioCtx.createGain();
+      gb2.gain.setValueAtTime(0.0001, t + 0.8);
+      gb2.gain.linearRampToValueAtTime(0.12, t + 0.95);
+      gb2.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+      belt.connect(bf2).connect(gb2).connect(audioCtx.destination);
+      belt.start(t + 0.8);
+    }
   }
   function playFootstep() {
     if (!audioCtx) return;
@@ -2601,6 +2647,24 @@
       }
       gunRecoil = Math.max(0, gunRecoil - dt * 8);
       recPitch = -gunRecoil * 0.12;
+
+      // ===== RELOAD ANIMATION (gun dips down, tilts, comes back) =====
+      // animates 0→1 over the reload: drop down, tilt, then back up
+      if (isReloading) {
+        // progress 0..1
+        var rp2 = 1 - (reloadTimer / reloadTime);
+        // ease: dip down fast, hold, come back at end
+        var dipPhase = rp2 < 0.3 ? rp2 / 0.3 : (rp2 > 0.8 ? (1 - rp2) / 0.2 : 1);
+        reloadAnim = dipPhase;
+        var reloadDrop = reloadAnim * 0.35; // gun drops down
+        var reloadTilt = reloadAnim * 0.25; // gun tilts (magazine out)
+        var reloadSide = reloadAnim * 0.15; // shifts left slightly
+        recPitch = -reloadDrop - gunRecoil * 0.12;
+        gunGroup.rotation.set(recPitch, reloadSide, reloadTilt * 0.5);
+        gunGroup.position.y = -0.32 + reloadDrop * -0.6;
+      } else {
+        reloadAnim = 0;
+      }
 
       // FOV zoom while aiming (smooth, eased) — sniper gets heavy scope zoom
       var isSniper = WEAPONS[currentWeapon].name === 'SNIPER';
