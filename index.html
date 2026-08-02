@@ -127,7 +127,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v19</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v20</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -197,7 +197,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v19'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v20'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -1165,14 +1165,14 @@
   //   LMG:     sight y=0.09,  adsScale 0.85 → adsY ≈ -0.077
   // Gun pushed forward + small scale → body stays BELOW the sight line
   var WEAPONS = [
-    { name: 'AK-47', magSize: 30, fireInterval: 0.18, build: buildAK47, flashScale: 0.6, adsX: 0, adsY: -0.081, adsZ: -0.6, adsScale: 0.85 },
-    { name: 'SHOTGUN', magSize: 8, fireInterval: 0.55, build: buildShotgun, flashScale: 0.9, adsX: 0, adsY: -0.05, adsZ: -0.56, adsScale: 0.9 },
-    { name: 'PISTOL', magSize: 12, fireInterval: 0.4, build: buildPistol, flashScale: 0.4, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
-    { name: 'SMG', magSize: 40, fireInterval: 0.15, build: buildSMG, flashScale: 0.5, adsX: 0, adsY: -0.077, adsZ: -0.55, adsScale: 0.9 },
-    { name: 'SNIPER', magSize: 5, fireInterval: 0.7, build: buildSniper, flashScale: 0.5, adsX: 0, adsY: -0.081, adsZ: -0.58, adsScale: 0.9 },
-    { name: 'DEAGLE', magSize: 8, fireInterval: 0.5, build: buildDeagle, flashScale: 0.5, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
-    { name: 'M4', magSize: 30, fireInterval: 0.16, build: buildM4, flashScale: 0.55, adsX: 0, adsY: -0.077, adsZ: -0.57, adsScale: 0.85 },
-    { name: 'LMG', magSize: 100, fireInterval: 0.16, build: buildLMG, flashScale: 0.6, adsX: 0, adsY: -0.077, adsZ: -0.58, adsScale: 0.85 }
+    { name: 'AK-47', magSize: 30, fireInterval: 0.09, build: buildAK47, flashScale: 0.6, adsX: 0, adsY: -0.081, adsZ: -0.6, adsScale: 0.85 },
+    { name: 'SHOTGUN', magSize: 8, fireInterval: 0.35, build: buildShotgun, flashScale: 0.9, adsX: 0, adsY: -0.05, adsZ: -0.56, adsScale: 0.9 },
+    { name: 'PISTOL', magSize: 12, fireInterval: 0.22, build: buildPistol, flashScale: 0.4, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
+    { name: 'SMG', magSize: 40, fireInterval: 0.065, build: buildSMG, flashScale: 0.5, adsX: 0, adsY: -0.077, adsZ: -0.55, adsScale: 0.9 },
+    { name: 'SNIPER', magSize: 5, fireInterval: 0.45, build: buildSniper, flashScale: 0.5, adsX: 0, adsY: -0.081, adsZ: -0.58, adsScale: 0.9 },
+    { name: 'DEAGLE', magSize: 8, fireInterval: 0.3, build: buildDeagle, flashScale: 0.5, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
+    { name: 'M4', magSize: 30, fireInterval: 0.08, build: buildM4, flashScale: 0.55, adsX: 0, adsY: -0.077, adsZ: -0.57, adsScale: 0.85 },
+    { name: 'LMG', magSize: 100, fireInterval: 0.075, build: buildLMG, flashScale: 0.6, adsX: 0, adsY: -0.077, adsZ: -0.58, adsScale: 0.85 }
   ];
   var currentWeapon = 0;
   var ammo = WEAPONS[0].magSize, magSize = WEAPONS[0].magSize;
@@ -1688,7 +1688,7 @@
 
   renderer.domElement.addEventListener('mousedown', function (e) {
     if (!gameStarted) return;
-    if (e.button === 0) { firing = true; } // auto-fire loop handles the shot
+    if (e.button === 0) { firing = true; shoot(); }
     if (e.button === 2) aiming = true;
   });
   document.addEventListener('mouseup', function (e) {
@@ -1813,7 +1813,7 @@
     el.addEventListener('mouseup', function () { if (onUp) onUp(); });
     el.addEventListener('mouseleave', function () { if (onUp) onUp(); });
   }
-  btnBind('fireBtn', function () { firing = true; }, function () { firing = false; });
+  btnBind('fireBtn', function () { firing = true; shoot(); }, function () { firing = false; });
   btnBind('runBtn', function () { isRunning = true; }, function () { isRunning = false; });
   btnBind('reloadBtn', function () {
     if (!isReloading && ammo < magSize) startReload();
@@ -2722,18 +2722,17 @@
       // keep the viewmodel light following the gun (world position of gun)
       gunLight.position.copy(gunGroup.getWorldPosition(_gunWorldPos));
 
-      // auto-fire using REAL TIME (immune to FPS/frame-rate entirely)
+      // auto-fire (full auto weapons); semi-auto fire once per press
       var isSemi = WEAPONS[currentWeapon].name === 'PISTOL' || WEAPONS[currentWeapon].name === 'DEAGLE' || WEAPONS[currentWeapon].name === 'SNIPER';
       if (firing && !isReloading && !myDead) {
-        var now = performance.now();
-        // fire immediately on first press, then respect the weapon's real interval
-        var intervalMs = isSemi ? 300 : WEAPONS[currentWeapon].fireInterval * 1000;
-        if (lastShotTime === 0 || now - lastShotTime >= intervalMs) {
+        fireTimer -= dt;
+        if (fireTimer <= 0) {
           shoot();
-          lastShotTime = now;
+          fireTimer += WEAPONS[currentWeapon].fireInterval;
+          if (ammo <= 0) fireTimer = 0;
         }
       } else {
-        lastShotTime = 0;
+        fireTimer = 0;
       }
 
       // reload timer (time-based — immune to frame rate drops)
