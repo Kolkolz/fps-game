@@ -151,7 +151,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v6</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v7</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -221,7 +221,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v6'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v7'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -615,6 +615,38 @@
   gunGroup.scale.set(2.2, 2.2, 2.2); // viewmodel scale — big & clearly visible
   camera.add(gunGroup);
   scene.add(camera); // camera must be in the scene for its children to render
+
+  // ===== RED DOT SIGHT ON THE GUN (3D viewmodel attachment) =====
+  // A glowing dot mounted on top of the weapon. When you ADS, the gun rises
+  // so you look THROUGH/at this dot — it's ON the gun, not a separate HUD.
+  var redDotMesh = null;
+  var redDotFrame = null;
+  function addRedDotToGun() {
+    removeRedDotFromGun();
+    // tiny mounting frame on top of the receiver
+    var frame = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.02, 8),
+      new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8 })
+    );
+    frame.position.set(0, 0.075, -0.05);
+    frame.rotation.z = Math.PI / 2;
+    gunGroup.add(frame);
+    redDotFrame = frame;
+    // the glowing lens dot
+    var dot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.005, 6, 5),
+      new THREE.MeshBasicMaterial({ color: 0xff2222 })
+    );
+    dot.position.set(0, 0.075, -0.055);
+    gunGroup.add(dot);
+    redDotMesh = dot;
+  }
+  function removeRedDotFromGun() {
+    if (redDotMesh && redDotMesh.parent) gunGroup.remove(redDotMesh);
+    if (redDotFrame && redDotFrame.parent) gunGroup.remove(redDotFrame);
+    redDotMesh = null;
+    redDotFrame = null;
+  }
 
   // Dedicated light for the gun — keeps it clearly visible
   // even in dark corners of the room (standard FPS "viewmodel light" trick)
@@ -1211,6 +1243,9 @@
     }
     currentWeapon = idx;
     WEAPONS[idx].build();
+    // mount a red-dot ON the gun (except sniper which has a scope)
+    if (WEAPONS[idx].name !== 'SNIPER') addRedDotToGun();
+    else removeRedDotFromGun();
     ammo = WEAPONS[idx].magSize;
     magSize = WEAPONS[idx].magSize;
     if (gunLabel) gunLabel.textContent = WEAPONS[idx].name;
@@ -1656,6 +1691,8 @@
     }
     // Build initial weapon
     WEAPONS[0].build();
+    // mount red-dot on the starting AK
+    addRedDotToGun();
     // Reset ammo
     ammo = WEAPONS[0].magSize;
     magSize = WEAPONS[0].magSize;
@@ -2704,51 +2741,43 @@
       camera.fov = hipFov + (adsFov - hipFov) * aimEase;
       camera.updateProjectionMatrix();
 
-      // ===== ADS: gun smoothly rises to center & the red-dot takes over =====
-      // For sniper, the gun drops OUT of the scope so the lens stays clear.
-      // For all others, the gun rises to meet the red dot — continuous, no cut.
+      // ===== ADS: gun rises to center so its red-dot becomes your sight =====
+      // NOTE: the red dot is part of the 3D gun model, not a HUD overlay.
+      // Sniper: gun sinks so the scope lens stays clear.
       var w = WEAPONS[currentWeapon];
       var gScale = 2.2 + (w.adsScale - 2.2) * aimEase;
       gunGroup.scale.set(gScale, gScale, gScale);
       var gx = 0.32 + (w.adsX - 0.32) * aimEase;
-      var gy = -0.32 + ((isSniper ? w.adsY : -0.02) + 0.32) * aimEase;
+      var gy = -0.32 + ((isSniper ? w.adsY : -0.10) + 0.32) * aimEase;
       var gz = -0.55 + (w.adsZ + 0.55) * aimEase;
       var aimTilt = -0.02 * aimEase;
       if (isSniper) {
-        // scope needs a clear lens → gun sinks below as you zoom in
         var sinkY = -aimEase * 1.1;
         var sinkZ = -aimEase * 0.2;
         gunGroup.position.set(gx + bobX * (1 - aimEase), gy + sinkY + bobY * (1 - aimEase), gz + sinkZ + gunRecoil * 0.06);
       } else {
-        // red-dot sight: gun rises to center where the dot is
+        // red-dot is ON the gun → raise gun so the dot centers as your sight
         gunGroup.position.set(gx + bobX * (1 - aimEase), gy + bobY * (1 - aimEase), gz + gunRecoil * 0.06);
       }
       gunGroup.rotation.set(recPitch, aimTilt, 0);
 
-      // crosshair fades out while aiming
+      // crosshair fades out while aiming — replaced by the gun's red dot
       var crosshair = document.getElementById('crosshair');
       crosshair.style.fontSize = (28 - 28 * aimEase) + 'px';
       crosshair.style.opacity = 1 - aimEase;
 
-      // 2D sight: sniper gets a scope; all others get a red dot sight
-      var weaponName = WEAPONS[currentWeapon].name;
-      // isSniper already defined above (line ~2698)
+      // scope overlay only for sniper; the 3D red-dot is already ON the gun
       var adsSight = document.getElementById('adsSight');
       var redDot = document.getElementById('redDot');
       var scopeOverlay = document.getElementById('scopeOverlay');
-      // red dot color varies per gun
-      var dotColorClass = (weaponName === 'AK-47' || weaponName === 'SMG' || weaponName === 'LMG') ? 'green' : 'red';
-      redDot.className = 'redDot ' + dotColorClass;
-      var showDot = !isSniper && aimEase > 0.02;
       adsSight.style.display = 'none';
+      redDot.style.display = 'none'; // red dot is a 3D model on the gun now
       scopeOverlay.style.display = (isSniper && aimEase > 0.02) ? 'block' : 'none';
-      redDot.style.display = showDot ? 'block' : 'none';
-      var adsOpacity = Math.min(1, aimEase * 1.5);
-      if (isSniper) scopeOverlay.style.opacity = adsOpacity;
-      else redDot.style.opacity = adsOpacity;
-      var adsScale = 0.85 + 0.15 * aimEase;
-      redDot.style.transform = 'translate(-50%, -50%) scale(' + adsScale + ')';
-      scopeOverlay.style.transform = 'translate(-50%, -50%) scale(' + (0.92 + 0.08 * aimEase) + ')'
+      if (isSniper) {
+        var adsOpacity = Math.min(1, aimEase * 1.5);
+        scopeOverlay.style.opacity = adsOpacity;
+        scopeOverlay.style.transform = 'translate(-50%, -50%) scale(' + (0.92 + 0.08 * aimEase) + ')';
+      }
 
       // vignette overlay
       var overlay = document.getElementById('aimOverlay');
