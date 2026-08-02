@@ -166,7 +166,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v10</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v11</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -3872,7 +3872,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v10'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v11'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -4412,7 +4412,7 @@
           wrapper.scale.set(0.9, 0.9, 0.9);
           wrapper.rotation.y = Math.PI;
           gunGroup.add(wrapper);
-          if (WEAPONS[currentWeapon].name !== 'SNIPER') addRedDotToGun();
+          if (WEAPONS[currentWeapon].name !== 'SNIPER') {} // no red dot on non-snipers
         } else {
           buildAK47Procedural();
         }
@@ -4940,8 +4940,8 @@
     currentWeapon = idx;
     WEAPONS[idx].build();
     // mount a red-dot ON the gun (except sniper which has a scope)
-    if (WEAPONS[idx].name !== 'SNIPER') addRedDotToGun();
-    else removeRedDotFromGun();
+    // no red dot on any gun; only the sniper scope exists
+    removeRedDotFromGun();
     ammo = WEAPONS[idx].magSize;
     magSize = WEAPONS[idx].magSize;
     if (gunLabel) gunLabel.textContent = WEAPONS[idx].name;
@@ -5409,8 +5409,8 @@
     }
     // Build initial weapon
     WEAPONS[0].build();
-    // mount red-dot on the starting AK
-    addRedDotToGun();
+    // no red dot on any gun
+    removeRedDotFromGun();
     // Reset ammo
     ammo = WEAPONS[0].magSize;
     magSize = WEAPONS[0].magSize;
@@ -6453,10 +6453,13 @@
         reloadAnim = 0;
       }
 
-      // FOV zoom while aiming (smooth, eased) — sniper gets heavy scope zoom
+      // FOV: ONLY the sniper zooms; all other guns keep normal FOV (no scope/zoom)
       var isSniper = WEAPONS[currentWeapon].name === 'SNIPER';
-      var hipFov = 75, adsFov = isSniper ? 20 : 52;
-      camera.fov = hipFov + (adsFov - hipFov) * aimEase;
+      if (isSniper) {
+        camera.fov = 75 + (20 - 75) * aimEase; // sniper zooms to 20
+      } else {
+        camera.fov = 75; // everyone else: NO zoom
+      }
       camera.updateProjectionMatrix();
 
       // ===== ADS (PUBG-style): gun lowers, clean crosshair stays center =====
@@ -6478,9 +6481,7 @@
       var crosshair = document.getElementById('crosshair');
       crosshair.style.display = 'block';
       crosshair.style.opacity = 1 - aimEase * 0.2;
-      // the gun's mounted red-dot fades out as the crosshair takes over (PUBG feel)
-      if (redDotMesh && !isSniper) redDotMesh.material.opacity = 1 - aimEase;
-      if (redDotFrame && !isSniper) redDotFrame.material.visible = true;
+      // no red dot on guns (only the sniper scope, handled below)
 
       // scope overlay only for sniper; the 3D red-dot is already ON the gun
       var adsSight = document.getElementById('adsSight');
