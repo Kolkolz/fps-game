@@ -1201,6 +1201,7 @@
   var isReloading = false;
   var reloadTime = 1.6, reloadTimer = 0, reloadEndTime = 0;
   var reloadAnim = 0; // 0 = normal, animates down/up during reload
+  var lastShotTime = 0; // real-time timestamp of last shot (fire rate control)
   var fireTimer = 0; // auto-fire cadence timer
   var gunBob = 0;
   var gunRecoil = 0;
@@ -2715,26 +2716,26 @@
       // keep the viewmodel light following the gun (world position of gun)
       gunLight.position.copy(gunGroup.getWorldPosition(_gunWorldPos));
 
-      // auto-fire (full auto weapons); semi-auto fire once per press
+      // auto-fire using REAL TIME (immune to FPS/frame-rate entirely)
       var isSemi = WEAPONS[currentWeapon].name === 'PISTOL' || WEAPONS[currentWeapon].name === 'DEAGLE' || WEAPONS[currentWeapon].name === 'SNIPER';
       if (firing && !isReloading) {
+        var now = performance.now();
         if (!isSemi) {
-          fireTimer -= dt;
-          if (fireTimer <= 0) {
+          if (lastShotTime === 0) lastShotTime = now;
+          if (now - lastShotTime >= WEAPONS[currentWeapon].fireInterval * 1000) {
             shoot();
-            // reset to FULL interval — never below 0, so low FPS can't over-fire
-            fireTimer = WEAPONS[currentWeapon].fireInterval;
-            if (ammo <= 0) fireTimer = 0; // trigger reload immediately on empty
+            lastShotTime = now;
+            if (ammo <= 0) lastShotTime = 0; // trigger reload immediately on empty
           }
         } else {
-          // semi-auto: fire once on press, then require release
-          if (fireTimer <= 0) {
+          // semi-auto: fire once per press
+          if (lastShotTime === 0 || now - lastShotTime >= 300) {
             shoot();
-            fireTimer = 999; // block until released
+            lastShotTime = now;
           }
         }
       } else {
-        fireTimer = 0;
+        lastShotTime = 0;
       }
 
       // reload timer (time-based — immune to frame rate drops)
