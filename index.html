@@ -100,7 +100,6 @@
   <div id="adsSight"><div class="ring"></div><div class="post"></div></div>
   <div id="scopeOverlay"><div class="lens"></div><div class="crosshair"></div><div class="dot"></div></div>
   <div id="info">FPS: 0</div>
-  <div id="debugPanel" style="position:absolute; top:60px; left:12px; color:#0f0; font-size:11px; font-family:monospace; background:rgba(0,0,0,0.4); padding:6px 8px; border-radius:6px; display:none; line-height:1.6;"></div>
   <div id="myHud" style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.45); padding:8px 12px; border-radius:8px; font-family:monospace; color:#fff;">
     <div style="font-size:13px; margin-bottom:4px;">⚔️ <span id="myKillsLabel">0</span> | 💀 <span id="myDeathsLabel">0</span></div>
     <div style="width:140px; height:10px; background:rgba(255,255,255,0.15); border-radius:5px; overflow:hidden;">
@@ -128,7 +127,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v25</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v1</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -198,7 +197,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v25'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v1'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -1166,14 +1165,14 @@
   //   LMG:     sight y=0.09,  adsScale 0.85 → adsY ≈ -0.077
   // Gun pushed forward + small scale → body stays BELOW the sight line
   var WEAPONS = [
-    { name: 'AK-47', magSize: 30, fireInterval: 4.0, build: buildAK47, flashScale: 0.6, adsX: 0, adsY: -0.081, adsZ: -0.6, adsScale: 0.85 },
-    { name: 'SHOTGUN', magSize: 8, fireInterval: 0.35, build: buildShotgun, flashScale: 0.9, adsX: 0, adsY: -0.05, adsZ: -0.56, adsScale: 0.9 },
-    { name: 'PISTOL', magSize: 12, fireInterval: 0.22, build: buildPistol, flashScale: 0.4, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
-    { name: 'SMG', magSize: 40, fireInterval: 0.065, build: buildSMG, flashScale: 0.5, adsX: 0, adsY: -0.077, adsZ: -0.55, adsScale: 0.9 },
-    { name: 'SNIPER', magSize: 5, fireInterval: 0.45, build: buildSniper, flashScale: 0.5, adsX: 0, adsY: -0.081, adsZ: -0.58, adsScale: 0.9 },
-    { name: 'DEAGLE', magSize: 8, fireInterval: 0.3, build: buildDeagle, flashScale: 0.5, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
-    { name: 'M4', magSize: 30, fireInterval: 0.08, build: buildM4, flashScale: 0.55, adsX: 0, adsY: -0.077, adsZ: -0.57, adsScale: 0.85 },
-    { name: 'LMG', magSize: 100, fireInterval: 0.075, build: buildLMG, flashScale: 0.6, adsX: 0, adsY: -0.077, adsZ: -0.58, adsScale: 0.85 }
+    { name: 'AK-47', magSize: 30, fireInterval: 0.11, pellets: 1, spread: 0.045, recoil: 1.0, damage: 28, reloadTime: 1.8, build: buildAK47, flashScale: 0.6, adsX: 0, adsY: -0.081, adsZ: -0.6, adsScale: 0.85 },
+    { name: 'SHOTGUN', magSize: 8, fireInterval: 0.9, pellets: 6, spread: 0.09, recoil: 1.6, damage: 34, reloadTime: 2.2, build: buildShotgun, flashScale: 0.9, adsX: 0, adsY: -0.05, adsZ: -0.56, adsScale: 0.9 },
+    { name: 'PISTOL', magSize: 12, fireInterval: 0.35, pellets: 1, spread: 0.035, recoil: 0.5, damage: 20, reloadTime: 1.2, build: buildPistol, flashScale: 0.4, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
+    { name: 'SMG', magSize: 40, fireInterval: 0.1, pellets: 1, spread: 0.08, recoil: 0.6, damage: 18, reloadTime: 1.6, build: buildSMG, flashScale: 0.5, adsX: 0, adsY: -0.077, adsZ: -0.55, adsScale: 0.9 },
+    { name: 'SNIPER', magSize: 5, fireInterval: 1.2, pellets: 1, spread: 0.005, recoil: 2.2, damage: 100, reloadTime: 2.8, build: buildSniper, flashScale: 0.5, adsX: 0, adsY: -0.081, adsZ: -0.58, adsScale: 0.9 },
+    { name: 'DEAGLE', magSize: 8, fireInterval: 0.5, pellets: 1, spread: 0.03, recoil: 1.5, damage: 45, reloadTime: 1.8, build: buildDeagle, flashScale: 0.5, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
+    { name: 'M4', magSize: 30, fireInterval: 0.1, pellets: 1, spread: 0.03, recoil: 0.8, damage: 30, reloadTime: 1.7, build: buildM4, flashScale: 0.55, adsX: 0, adsY: -0.077, adsZ: -0.57, adsScale: 0.85 },
+    { name: 'LMG', magSize: 100, fireInterval: 0.12, pellets: 1, spread: 0.07, recoil: 0.8, damage: 15, reloadTime: 3.2, build: buildLMG, flashScale: 0.6, adsX: 0, adsY: -0.077, adsZ: -0.58, adsScale: 0.85 }
   ];
   var currentWeapon = 0;
   var ammo = WEAPONS[0].magSize, magSize = WEAPONS[0].magSize;
@@ -1204,16 +1203,12 @@
   var isReloading = false;
   var reloadTime = 1.6, reloadTimer = 0, reloadEndTime = 0;
   var reloadAnim = 0; // 0 = normal, animates down/up during reload
-
-  // ===== FIRE SYSTEM (single source of truth — game loop only) =====
-  var firePressed = false;      // is the fire button held?
-  var lastShotTime = 0;         // performance.now() of last shot
-  var shotCount = 0;            // debug: total shots fired this game
-  var semiFired = false;        // semi-auto: fired on current press?
-  var blockedShots = 0;         // debug: shots blocked by the rate guard
+  var lastShotTime = 0; // real-time timestamp of last shot (fire rate control)
+  var fireTimer = 0; // auto-fire cadence timer
   var gunBob = 0;
   var gunRecoil = 0;
   var muzzleFlashMesh = null;
+  var firing = false;
   var aiming = false; // ADS (aim down sights)
   var aimBlend = 0; // 0 = hip, 1 = fully aimed
   var footstepTimer = 0;
@@ -1453,33 +1448,17 @@
 
   // per-weapon damage table (sniper 1-shot, AK few shots, pistol many)
   function weaponDamage() {
-    var n = WEAPONS[currentWeapon].name;
-    if (n === 'SNIPER') return 100;   // 1 shot kill
-    if (n === 'SHOTGUN') return 34;   // 3 shots
-    if (n === 'DEAGLE') return 45;    // 3 shots
-    if (n === 'M4') return 30;        // 4 shots
-    if (n === 'AK-47') return 28;     // 4 shots
-    if (n === 'SMG') return 18;       // 6 shots
-    if (n === 'LMG') return 15;       // 7 shots
-    return 20; // PISTOL: 5 shots
+    return WEAPONS[currentWeapon].damage;
   }
   function shoot() {
     if (isReloading) return;
     if (myDead) return; // can't shoot while dead
-    // ===== HARD FIRE-RATE GUARD (final protection — nothing can bypass this) =====
-    var nowMs = performance.now();
-    if (lastShotTime !== 0) {
-      var minGap = WEAPONS[currentWeapon].fireInterval * 1000;
-      if ((nowMs - lastShotTime) < minGap) { blockedShots++; return; } // too soon — IGNORE the shot
-    }
     if (ammo <= 0) {
       playEmptyClick();
       startReload();
       return;
     }
-    lastShotTime = nowMs;
     ammo--;
-    shotCount++; // debug counter
     ensureAudio();
     playGunshot();
     var wName = WEAPONS[currentWeapon].name;
@@ -1488,8 +1467,11 @@
     var isPistol = wName === 'PISTOL';
     var isDeagle = wName === 'DEAGLE';
     var isLMG = wName === 'LMG';
+    var isSMG = wName === 'SMG';
+    var isAK = wName === 'AK-47';
+    var isM4 = wName === 'M4';
     // per-weapon recoil (sniper kicks hard, deagle heavy, pistol light, SMG medium-fast)
-    var baseRecoil = isShotgun ? 1.6 : isSniper ? 2.2 : isDeagle ? 1.5 : isPistol ? 0.5 : isLMG ? 0.8 : 1.0;
+    var baseRecoil = WEAPONS[currentWeapon].recoil;
     gunRecoil = baseRecoil * (aimBlend > 0.5 ? 0.55 : 1); // less recoil when aiming
 
     // muzzle flash
@@ -1500,14 +1482,13 @@
     }
 
     // raycast — shotgun fires a spread of pellets; hip-fire adds inaccuracy
-    var euler = new THREE.Euler(pitch, yaw, 0, 'YXZ');
-    var pellets = isShotgun ? 6 : 1;
+    var pellets = WEAPONS[currentWeapon].pellets;
     // hip-fire spread: wide when not aiming, tight when ADS
     // SMG/Shotgun spread more; sniper is always precise when ADS
-    var hipSpread = (1 - aimBlend) * (isShotgun ? 0.09 : isSMG ? 0.08 : isLMG ? 0.07 : isSniper ? 0.02 : 0.045);
+    var hipSpread = (1 - aimBlend) * WEAPONS[currentWeapon].spread;
     var meshes = null;
     for (var p = 0; p < pellets; p++) {
-      var spread = isShotgun ? (Math.random() - 0.5) * 0.09 : 0;
+      var spread = isShotgun ? (Math.random() - 0.5) * WEAPONS[currentWeapon].spread : 0;
       var pe = new THREE.Euler(
         pitch + (Math.random() - 0.5) * (isShotgun ? 0.05 : hipSpread),
         yaw + spread + (Math.random() - 0.5) * hipSpread,
@@ -1616,6 +1597,7 @@
     if (isReloading) return;
     aiming = false; // exit ADS when reloading
     isReloading = true;
+    reloadTime = WEAPONS[currentWeapon].reloadTime; // per-weapon reload time
     reloadTimer = reloadTime;
     reloadEndTime = performance.now() + reloadTime * 1000;
     ensureAudio();
@@ -1648,6 +1630,12 @@
     } else {
       renderer.domElement.requestPointerLock();
     }
+    // Build initial weapon
+    WEAPONS[0].build();
+    // Reset ammo
+    ammo = WEAPONS[0].magSize;
+    magSize = WEAPONS[0].magSize;
+    if (gunLabel) gunLabel.textContent = WEAPONS[0].name;
   }
   function pauseGame() {
     gamePaused = true;
@@ -1694,10 +1682,6 @@
       if (e.code === 'Digit6') switchWeapon(5);
       if (e.code === 'Digit7') switchWeapon(6);
       if (e.code === 'Digit8') switchWeapon(7);
-      if (e.code === 'F3') {
-        var dp = document.getElementById('debugPanel');
-        if (dp) dp.style.display = dp.style.display === 'none' ? 'block' : 'none';
-      }
     }
   });
   document.addEventListener('keyup', function (e) { keys[e.code] = false; });
@@ -1705,14 +1689,14 @@
 
   renderer.domElement.addEventListener('mousedown', function (e) {
     if (!gameStarted) return;
-    if (e.button === 0) { firePressed = true; } // game loop fires
+    if (e.button === 0) { firing = true; } // auto-fire loop handles the shot
     if (e.button === 2) aiming = true;
   });
   document.addEventListener('mouseup', function (e) {
-    if (e.button === 0) firePressed = false;
+    if (e.button === 0) firing = false;
     if (e.button === 2) aiming = false;
   });
-  window.addEventListener('blur', function () { firePressed = false; aiming = false; keys = {}; });
+  window.addEventListener('blur', function () { firing = false; aiming = false; keys = {}; });
   document.addEventListener('mousemove', function (e) {
     if (!gameStarted || gamePaused) return;
     if (document.pointerLockElement !== renderer.domElement) return;
@@ -1830,7 +1814,7 @@
     el.addEventListener('mouseup', function () { if (onUp) onUp(); });
     el.addEventListener('mouseleave', function () { if (onUp) onUp(); });
   }
-  btnBind('fireBtn', function () { firePressed = true; }, function () { firePressed = false; });
+  btnBind('fireBtn', function () { firing = true; }, function () { firing = false; });
   btnBind('runBtn', function () { isRunning = true; }, function () { isRunning = false; });
   btnBind('reloadBtn', function () {
     if (!isReloading && ammo < magSize) startReload();
@@ -2739,25 +2723,21 @@
       // keep the viewmodel light following the gun (world position of gun)
       gunLight.position.copy(gunGroup.getWorldPosition(_gunWorldPos));
 
-      // ===== FIRE SYSTEM (game loop calls shoot ONCE per frame; shoot() has the hard rate guard) =====
-      // AUTO weapons: hold to keep firing (rate enforced inside shoot())
-      // SEMI weapons: only fire on a fresh press (firePressed rising edge)
-      var wName2 = WEAPONS[currentWeapon].name;
-      var isSemi2 = wName2 === 'PISTOL' || wName2 === 'DEAGLE' || wName2 === 'SNIPER';
-      if (firePressed && !isReloading && !myDead) {
-        if (isSemi2) {
-          // semi: fire once per press — use a flag to only fire on fresh press
-          if (!semiFired) {
-            shoot(); // rate guard inside will enforce timing
-            semiFired = true;
-          }
-        } else {
-          shoot(); // rate guard inside shoot() enforces the exact interval
+      // auto-fire using REAL TIME (immune to FPS/frame-rate entirely)
+      var isSemi = WEAPONS[currentWeapon].name === 'PISTOL' || WEAPONS[currentWeapon].name === 'DEAGLE' || WEAPONS[currentWeapon].name === 'SNIPER';
+      if (firing && !isReloading && !myDead) {
+        var now = performance.now();
+        var intervalMs = WEAPONS[currentWeapon].fireInterval * 1000;
+        // fire immediately if idle >1s, otherwise respect the weapon's real interval
+        if (lastShotTime === 0 || now - lastShotTime >= intervalMs) {
+          shoot();
+          lastShotTime = now;
+          if (isSemi) firing = false; // semi-auto: ONE shot per press, no auto-fire
         }
-      } else {
-        // released → allow next semi shot + reset rate guard so press fires fast
-        semiFired = false;
-        lastShotTime = 0;
+      } else if (!firing) {
+        // keep lastShotTime so a quick re-press can't bypass the interval
+        // but reset after 1s idle so the next fresh press fires instantly
+        if (lastShotTime !== 0 && performance.now() - lastShotTime > 1000) lastShotTime = 0;
       }
 
       // reload timer (time-based — immune to frame rate drops)
@@ -2784,19 +2764,8 @@
         '  Y:' + camera.position.y.toFixed(1) +
         '  Z:' + camera.position.z.toFixed(1) +
         (isRunning && moving ? '  |  RUNNING' : '');
-      // debug panel (fire system diagnostics)
-      var dbg = document.getElementById('debugPanel');
-      if (dbg) {
-        dbg.innerHTML = 'FIRE DEBUG<br>' +
-          'weapon: ' + WEAPONS[currentWeapon].name + '<br>' +
-          'pressed: ' + firePressed + '<br>' +
-          'lastShot: ' + Math.round(lastShotTime) + 'ms<br>' +
-          'shots: ' + shotCount + '<br>' +
-          'blocked: ' + blockedShots + '<br>' +
-          'ammo: ' + ammo + '/' + magSize;
-      }
-      ammoEl.textContent = ammo + ' / ' + magSize;
-      if (isReloading) ammoEl.textContent = 'RELOADING';
+      ammoEl.textContent = WEAPONS[currentWeapon].name + '  ' + ammo + ' / ' + magSize;
+      if (isReloading) ammoEl.textContent = WEAPONS[currentWeapon].name + '  RELOADING';
     }
 
     renderer.render(scene, camera);
