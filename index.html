@@ -127,6 +127,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v19</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -196,6 +197,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
+  var GAME_VERSION = 'v19'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -2753,7 +2755,7 @@
       }
 
       // HUD
-      infoEl.textContent = 'FPS: ' + fps +
+      infoEl.textContent = GAME_VERSION + ' | FPS: ' + fps +
         '  |  X:' + camera.position.x.toFixed(1) +
         '  Y:' + camera.position.y.toFixed(1) +
         '  Z:' + camera.position.z.toFixed(1) +
