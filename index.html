@@ -267,6 +267,74 @@
     return t;
   }
 
+  // ===== DUST2-STYLE TEXTURES =====
+  // Sandy ground (de_dust2 floor)
+  function sandTexture() {
+    var c = makeCanvas(256, 256), g = c.getContext('2d');
+    g.fillStyle = '#c9a86b'; g.fillRect(0, 0, 256, 256);
+    // sand speckles
+    for (var i = 0; i < 900; i++) {
+      var v = 180 + Math.random() * 60;
+      g.fillStyle = 'rgb(' + v + ',' + Math.floor(v * 0.85) + ',' + Math.floor(v * 0.55) + ')';
+      g.fillRect(Math.random() * 256, Math.random() * 256, 2 + Math.random() * 3, 2 + Math.random() * 2);
+    }
+    // darker patches
+    for (var j = 0; j < 12; j++) {
+      g.fillStyle = 'rgba(140,110,60,0.15)';
+      g.beginPath();
+      g.ellipse(Math.random() * 256, Math.random() * 256, 20 + Math.random() * 40, 15 + Math.random() * 30, Math.random() * 3, 0, Math.PI * 2);
+      g.fill();
+    }
+    var t = textureFrom(c);
+    t.repeat.set(8, 8);
+    return t;
+  }
+
+  // Stone wall (de_dust2 walls — warm beige blocks)
+  function stoneTexture() {
+    var c = makeCanvas(256, 128), g = c.getContext('2d');
+    g.fillStyle = '#a8895f'; g.fillRect(0, 0, 256, 128);
+    g.strokeStyle = '#8a6e48'; g.lineWidth = 3;
+    // stone blocks
+    for (var row = 0; row < 3; row++) {
+      var y = row * 43, off = (row % 2) * 43;
+      for (var x = -off; x < 300; x += 86) {
+        g.strokeRect(x, y, 86, 43);
+        // inner texture
+        g.fillStyle = 'rgba(255,255,255,0.04)';
+        g.fillRect(x + 2, y + 2, 82, 39);
+        // speckles
+        for (var s = 0; s < 10; s++) {
+          g.fillStyle = 'rgba(120,95,60,0.3)';
+          g.fillRect(x + 5 + Math.random() * 76, y + 5 + Math.random() * 33, 4, 3);
+        }
+      }
+    }
+    var t = textureFrom(c);
+    t.repeat.set(6, 2);
+    return t;
+  }
+
+  // Wooden crate (dust2 crates)
+  function crateTexture() {
+    var c = makeCanvas(128, 128), g = c.getContext('2d');
+    g.fillStyle = '#8a6b3a'; g.fillRect(0, 0, 128, 128);
+    g.strokeStyle = '#6b4f28'; g.lineWidth = 5;
+    // planks
+    for (var i = 0; i < 4; i++) {
+      g.beginPath(); g.moveTo(0, i * 32); g.lineTo(128, i * 32); g.stroke();
+    }
+    // diagonal brace
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(128, 128); g.stroke();
+    g.beginPath(); g.moveTo(128, 0); g.lineTo(0, 128); g.stroke();
+    // wood grain
+    g.strokeStyle = 'rgba(80,55,20,0.3)'; g.lineWidth = 1;
+    for (var w = 0; w < 15; w++) {
+      g.beginPath(); g.moveTo(Math.random() * 128, 0); g.lineTo(Math.random() * 128, 128); g.stroke();
+    }
+    return textureFrom(c);
+  }
+
   function paintingTexture() {
     var c = makeCanvas(256, 160), g = c.getContext('2d');
     // sky
@@ -300,15 +368,16 @@
   }
 
   /* ===================== LIGHTS ===================== */
-  var ambient = new THREE.AmbientLight(0x404060, 0.5);
+  // warm base lighting (Dust2 palette — sandy warm tones)
+  var ambient = new THREE.AmbientLight(0xffe8c8, 0.55);
   scene.add(ambient);
 
-  var ceilingLight = new THREE.PointLight(0xfff5e0, 1.0, 20);
+  var ceilingLight = new THREE.PointLight(0xffe0b0, 0.8, 25);
   ceilingLight.position.set(0, 4.8, 0);
   ceilingLight.castShadow = true;
   scene.add(ceilingLight);
 
-  var dirLight = new THREE.DirectionalLight(0xffeedd, 0.3);
+  var dirLight = new THREE.DirectionalLight(0xfff0d0, 0.4);
   dirLight.position.set(5, 5, 5);
   scene.add(dirLight);
 
@@ -344,14 +413,16 @@
     return m;
   }
 
-  /* ===================== THE ROOM ===================== */
+  /* ===================== DUST2-STYLE MAP ===================== */
+  // Warm sandy ground, stone walls, crates, barrels, ramps, tunnels — de_dust2 vibes
   (function () {
-    var wallMat = new THREE.MeshStandardMaterial({ map: brickTexture(), roughness: 0.85 });
-    var floorMat = new THREE.MeshStandardMaterial({ map: checkerTexture(), roughness: 0.9 });
-    var ceilMat = new THREE.MeshStandardMaterial({ map: gridTexture(), roughness: 0.9 });
+    var wallMat = new THREE.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.9 });
+    var floorMat = new THREE.MeshStandardMaterial({ map: sandTexture(), roughness: 0.95 });
+    var ceilMat = new THREE.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.9 });
+    var crateMat = new THREE.MeshStandardMaterial({ map: crateTexture(), roughness: 0.85 });
     var half = ROOM / 2;
 
-    // floor
+    // floor (sandy)
     var floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = 0;
@@ -364,202 +435,118 @@
     ceil.position.y = WALL_H;
     scene.add(ceil);
 
-    // walls (single-sided, facing inward)
+    // walls (stone, single-sided facing inward)
     var wallGeo = new THREE.PlaneGeometry(ROOM, WALL_H);
-    // north (z = -half)
     var wn = new THREE.Mesh(wallGeo, wallMat);
     wn.position.set(0, WALL_H / 2, -half);
     scene.add(wn);
-    // south (z = +half)
     var ws = new THREE.Mesh(wallGeo, wallMat);
     ws.position.set(0, WALL_H / 2, half);
     ws.rotation.y = Math.PI;
     scene.add(ws);
-    // west (x = -half)
     var ww = new THREE.Mesh(wallGeo, wallMat);
     ww.position.set(-half, WALL_H / 2, 0);
     ww.rotation.y = Math.PI / 2;
     scene.add(ww);
-    // east (x = +half)
     var we = new THREE.Mesh(wallGeo, wallMat);
     we.position.set(half, WALL_H / 2, 0);
     we.rotation.y = -Math.PI / 2;
     scene.add(we);
-  })();
 
-  /* ===================== FURNITURE ===================== */
-  // --- Table ---
-  (function () {
-    var top = meshWithShadow(new THREE.BoxGeometry(1.2, 0.08, 0.8),
-      new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.8 }), -5, 0.75, -3);
-    var legMat = new THREE.MeshStandardMaterial({ color: 0x6B3A1B, roughness: 0.85 });
-    var legPos = [[-0.5, -0.35], [0.5, -0.35], [-0.5, 0.35], [0.5, 0.35]];
-    for (var i = 0; i < 4; i++) {
-      meshWithShadow(new THREE.BoxGeometry(0.08, 0.75, 0.08), legMat,
-        -5 + legPos[i][0], 0.375, -3 + legPos[i][1]);
+    // ===== CRATE COVERS (dust2 style — wooden boxes) =====
+    // Mid crate stack (like dust2 mid)
+    meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, 0, 0.35, 2);
+    meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, 1.3, 0.35, 2);
+    meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, -1.3, 0.35, 2);
+    meshWithShadow(new THREE.BoxGeometry(1.1, 0.7, 1.1), crateMat, 0, 1.05, 2); // stacked on top
+    addCollider(0, 2, 0.6, 0.6);
+    addCollider(1.3, 2, 0.6, 0.6);
+    addCollider(-1.3, 2, 0.6, 0.6);
+
+    // Long crate wall (like dust2 long corner)
+    meshWithShadow(new THREE.BoxGeometry(3, 0.8, 0.8), crateMat, 6, 0.4, -4);
+    meshWithShadow(new THREE.BoxGeometry(0.8, 0.8, 2.5), crateMat, 8.5, 0.4, -2.5);
+    meshWithShadow(new THREE.BoxGeometry(0.8, 0.8, 2.5), crateMat, -8.5, 0.4, -2.5);
+    addCollider(6, -4, 1.5, 0.45);
+    addCollider(8.5, -2.5, 0.45, 1.3);
+    addCollider(-8.5, -2.5, 0.45, 1.3);
+
+    // Double stack (like dust2 A site boxes)
+    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, 5, 0.3, 5);
+    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, 5, 0.9, 5);
+    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, -5, 0.3, 5);
+    meshWithShadow(new THREE.BoxGeometry(0.9, 0.6, 0.9), crateMat, -5, 0.9, 5);
+    addCollider(5, 5, 0.5, 0.5);
+    addCollider(-5, 5, 0.5, 0.5);
+
+    // ===== BARRELS (dust2 classic) =====
+    var barrelMat = new THREE.MeshStandardMaterial({ color: 0x6b6f4a, roughness: 0.7, metalness: 0.3 });
+    function addBarrel(x, z) {
+      meshWithShadow(new THREE.CylinderGeometry(0.35, 0.4, 1, 12), barrelMat, x, 0.5, z);
+      meshWithShadow(new THREE.TorusGeometry(0.38, 0.025, 6, 16), barrelMat, x, 0.35, z);
+      meshWithShadow(new THREE.TorusGeometry(0.38, 0.025, 6, 16), barrelMat, x, 0.75, z);
+      addCollider(x, z, 0.45, 0.45);
     }
-    addCollider(-5, -3, 0.55, 0.4); // collider 1.1x0.6 → half 0.55 x 0.3? spec says 1.1×0.6 → half 0.55×0.3
-  })();
+    addBarrel(3, -6);
+    addBarrel(4.2, -6);
+    addBarrel(-3, 6);
+    addBarrel(-4.2, 6);
+    addBarrel(7.5, 3);
 
-  // --- Chair 1 ---
-  (function () {
-    var mat = new THREE.MeshStandardMaterial({ color: 0x7B4A1B, roughness: 0.85 });
-    var legMat = new THREE.MeshStandardMaterial({ color: 0x6B3A0B, roughness: 0.85 });
-    // seat
-    meshWithShadow(new THREE.BoxGeometry(0.45, 0.06, 0.45), mat, -5, 0.48, -1.5);
-    // backrest
-    meshWithShadow(new THREE.BoxGeometry(0.45, 0.55, 0.06), mat, -5, 0.78, -1.73);
-    // 4 legs
-    var lp = [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]];
-    for (var i = 0; i < 4; i++) {
-      meshWithShadow(new THREE.BoxGeometry(0.05, 0.45, 0.05), legMat, -5 + lp[i][0], 0.225, -1.5 + lp[i][1]);
-    }
-    addCollider(-5, -1.5, 0.35, 0.35);
-  })();
+    // ===== LOW WALLS (dust2 cover walls) =====
+    var lowWallMat = new THREE.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.9 });
+    // mid low wall
+    meshWithShadow(new THREE.BoxGeometry(2.2, 1.2, 0.35), lowWallMat, 0, 0.6, -1);
+    addCollider(0, -1, 1.15, 0.25);
+    // corner low walls
+    meshWithShadow(new THREE.BoxGeometry(0.35, 1.2, 2.2), lowWallMat, -6.5, 0.6, 0);
+    addCollider(-6.5, 0, 0.25, 1.15);
+    meshWithShadow(new THREE.BoxGeometry(0.35, 1.2, 2.2), lowWallMat, 6.5, 0.6, 0);
+    addCollider(6.5, 0, 0.25, 1.15);
 
-  // --- Chair 2 ---
-  (function () {
-    var mat = new THREE.MeshStandardMaterial({ color: 0x7B4A1B, roughness: 0.85 });
-    var legMat = new THREE.MeshStandardMaterial({ color: 0x6B3A0B, roughness: 0.85 });
-    meshWithShadow(new THREE.BoxGeometry(0.45, 0.06, 0.45), mat, -3.5, 0.48, -3);
-    meshWithShadow(new THREE.BoxGeometry(0.45, 0.55, 0.06), mat, -3.5, 0.78, -3.23);
-    var lp = [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]];
-    for (var i = 0; i < 4; i++) {
-      meshWithShadow(new THREE.BoxGeometry(0.05, 0.45, 0.05), legMat, -3.5 + lp[i][0], 0.225, -3 + lp[i][1]);
-    }
-    addCollider(-3.5, -3, 0.35, 0.35);
-  })();
+    // ===== RAMP (dust2 style slope near tunnel) =====
+    (function () {
+      var rampGeo = new THREE.BoxGeometry(2, 0.15, 3);
+      var ramp = meshWithShadow(rampGeo, lowWallMat, 8, 0.075, 7);
+      ramp.rotation.x = -0.2; // slight slope
+      ramp.position.y = 0.3;
+      addCollider(8, 7, 1.1, 1.5);
+    })();
 
-  // --- Shelves + Books ---
-  (function () {
-    var shelfMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.8 });
-    var shelf = meshWithShadow(new THREE.BoxGeometry(2, 0.08, 0.3), shelfMat, 8, 1.2, -8);
-    var shelf2 = meshWithShadow(new THREE.BoxGeometry(2, 0.08, 0.3), shelfMat, 8, 1.8, -8);
-    var sideMat = new THREE.MeshStandardMaterial({ color: 0x4a2a0a, roughness: 0.8 });
-    meshWithShadow(new THREE.BoxGeometry(0.08, 2, 0.3), sideMat, 7, 1, -8);
-    meshWithShadow(new THREE.BoxGeometry(0.08, 2, 0.3), sideMat, 9, 1, -8);
-    // books row 1 (7 books)
-    var bookColors = [0xcc3333, 0x3366cc, 0x33aa55, 0xcc9933, 0x8844aa, 0xcc6633, 0x3399aa];
-    for (var i = 0; i < 7; i++) {
-      var h = 0.2 + Math.random() * 0.15;
-      var b = meshWithShadow(new THREE.BoxGeometry(0.12, h, 0.22),
-        new THREE.MeshStandardMaterial({ color: bookColors[i], roughness: 0.7 }),
-        7.15 + i * 0.17, 1.2 + h / 2, -8.02);
-    }
-    // books row 2 (5 books)
-    for (var j = 0; j < 5; j++) {
-      var h2 = 0.2 + Math.random() * 0.15;
-      meshWithShadow(new THREE.BoxGeometry(0.12, h2, 0.22),
-        new THREE.MeshStandardMaterial({ color: bookColors[(j + 3) % 7], roughness: 0.7 }),
-        7.25 + j * 0.2, 1.8 + h2 / 2, -8.02);
-    }
-    addCollider(8, -8, 0.9, 0.25);
-  })();
+    // ===== TUNNEL ARCH (like dust2 tunnels) =====
+    (function () {
+      var archMat = new THREE.MeshStandardMaterial({ color: 0x8a6e48, roughness: 0.9 });
+      // two side pillars + top beam at the north wall
+      meshWithShadow(new THREE.BoxGeometry(0.6, 3, 0.6), archMat, -2.5, 1.5, -9.5);
+      meshWithShadow(new THREE.BoxGeometry(0.6, 3, 0.6), archMat, 2.5, 1.5, -9.5);
+      meshWithShadow(new THREE.BoxGeometry(6.2, 0.6, 0.6), archMat, 0, 3.3, -9.5);
+      addCollider(-2.5, -9.5, 0.45, 0.45);
+      addCollider(2.5, -9.5, 0.45, 0.45);
+    })();
 
-  // --- Desk + Monitor ---
-  (function () {
-    var deskMat = new THREE.MeshStandardMaterial({ color: 0x4a4a5a, roughness: 0.8 });
-    meshWithShadow(new THREE.BoxGeometry(1.1, 0.08, 0.6), deskMat, 5, 0.8, 8);
-    var legMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.8 });
-    var lp = [[-0.48, -0.25], [0.48, -0.25], [-0.48, 0.25], [0.48, 0.25]];
-    for (var i = 0; i < 4; i++) {
-      meshWithShadow(new THREE.BoxGeometry(0.07, 0.8, 0.07), legMat, 5 + lp[i][0], 0.4, 8 + lp[i][1]);
-    }
-    // monitor stand + screen
-    meshWithShadow(new THREE.BoxGeometry(0.2, 0.25, 0.15), deskMat, 5, 0.95, 7.85);
-    var screenMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4 });
-    var screen = meshWithShadow(new THREE.BoxGeometry(0.7, 0.45, 0.05), screenMat, 5, 1.2, 7.78);
-    // glowing screen (basic material, emissive look)
-    var glow = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.37),
-      new THREE.MeshBasicMaterial({ color: 0x2244aa }));
-    glow.position.set(5, 1.2, 7.755);
-    glow.rotation.y = Math.PI; // face toward player (desk faces +z inward)
-    scene.add(glow);
-    addCollider(5, 8, 0.85, 0.5);
-  })();
-
-  // --- Crates ---
-  (function () {
-    var c1 = meshWithShadow(new THREE.BoxGeometry(0.8, 0.8, 0.8),
-      new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.9 }), 7, 0.4, 0);
-    var c2 = meshWithShadow(new THREE.BoxGeometry(0.8, 0.8, 0.8),
-      new THREE.MeshStandardMaterial({ color: 0x7B5914, roughness: 0.9 }), 8, 0.4, 1);
-    addCollider(7, 0, 0.4, 0.4);
-    addCollider(8, 1, 0.4, 0.4);
-  })();
-
-  // --- Barrel ---
-  (function () {
-    var barrel = meshWithShadow(new THREE.CylinderGeometry(0.35, 0.4, 1, 12),
-      new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.85 }), -8, 0.5, 5);
-    // bands
-    var bandMat = new THREE.MeshStandardMaterial({ color: 0x3a2f25, roughness: 0.8 });
-    meshWithShadow(new THREE.TorusGeometry(0.38, 0.025, 6, 16), bandMat, -8, 0.35, 5);
-    meshWithShadow(new THREE.TorusGeometry(0.38, 0.025, 6, 16), bandMat, -8, 0.75, 5);
-    addCollider(-8, 5, 0.5, 0.5);
-  })();
-
-  // --- Sofa ---
-  (function () {
-    var sofaMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.9 });
-    meshWithShadow(new THREE.BoxGeometry(1.6, 0.4, 0.7), sofaMat, -7, 0.45, -7);
-    meshWithShadow(new THREE.BoxGeometry(1.6, 0.5, 0.15), sofaMat, -7, 0.9, -7.35);
-    meshWithShadow(new THREE.BoxGeometry(0.15, 0.5, 0.7), sofaMat, -7.8, 0.9, -7);
-    meshWithShadow(new THREE.BoxGeometry(0.15, 0.5, 0.7), sofaMat, -6.2, 0.9, -7);
-    addCollider(-7, -7, 1.3, 0.6);
-  })();
-
-  // --- Painting ---
-  (function () {
-    var p = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0),
-      new THREE.MeshStandardMaterial({ map: paintingTexture(), roughness: 0.7 }));
-    p.position.set(0, 2.8, -9.95);
-    scene.add(p);
-  })();
-
-  // --- Floor Lamp ---
-  (function () {
-    var pole = meshWithShadow(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 8),
-      new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.6 }), 7, 0.8, -4);
-    var base = meshWithShadow(new THREE.CylinderGeometry(0.18, 0.2, 0.05, 12),
-      new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.6 }), 7, 0.025, -4);
-    var shade = meshWithShadow(new THREE.CylinderGeometry(0.22, 0.14, 0.3, 12),
-      new THREE.MeshStandardMaterial({ color: 0xffeecc, roughness: 0.8, emissive: 0x554433, emissiveIntensity: 0.3 }), 7, 1.75, -4);
-    var lampLight = new THREE.PointLight(0xffddaa, 0.5, 5);
-    lampLight.position.set(7, 1.8, -4);
-    scene.add(lampLight);
-    addCollider(7, -4, 0.2, 0.2);
-  })();
-
-  // --- Ceiling Light fixture ---
-  (function () {
-    var fixture = meshWithShadow(new THREE.CylinderGeometry(0.25, 0.3, 0.08, 12),
-      new THREE.MeshStandardMaterial({ color: 0xccccee, roughness: 0.6 }), 0, 4.9, 0);
-    var bulb = meshWithShadow(new THREE.SphereGeometry(0.12, 10, 8),
-      new THREE.MeshStandardMaterial({ color: 0xffffee, emissive: 0xfff5e0, emissiveIntensity: 0.8 }), 0, 4.82, 0);
-  })();
-
-  // --- Pillars ---
-  (function () {
-    var pillarMat = new THREE.MeshStandardMaterial({ color: 0x7a7a8a, roughness: 0.8 });
-    meshWithShadow(new THREE.CylinderGeometry(0.25, 0.25, 5, 8), pillarMat, 3, 2.5, 3);
-    meshWithShadow(new THREE.CylinderGeometry(0.25, 0.25, 5, 8), pillarMat, -3, 2.5, 3);
-    meshWithShadow(new THREE.CylinderGeometry(0.25, 0.25, 5, 8), pillarMat, 3, 2.5, -3);
-    meshWithShadow(new THREE.CylinderGeometry(0.25, 0.25, 5, 8), pillarMat, -3, 2.5, -3);
-    addCollider(3, 3, 0.4, 0.4);
-    addCollider(-3, 3, 0.4, 0.4);
-    addCollider(3, -3, 0.4, 0.4);
-    addCollider(-3, -3, 0.4, 0.4);
-  })();
-
-  // --- Rug ---
-  (function () {
-    var rug = new THREE.Mesh(new THREE.PlaneGeometry(5, 4),
-      new THREE.MeshStandardMaterial({ map: rugTexture(), roughness: 0.95 }));
-    rug.rotation.x = -Math.PI / 2;
-    rug.position.set(0, 0.01, 0);
-    rug.receiveShadow = true;
-    scene.add(rug);
+    // ===== WARM DUSTY LIGHTING =====
+    // main warm sun
+    var sun = new THREE.DirectionalLight(0xffe8c0, 1.1);
+    sun.position.set(8, 12, 5);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 1024;
+    sun.shadow.mapSize.height = 1024;
+    sun.shadow.camera.left = -15; sun.shadow.camera.right = 15;
+    sun.shadow.camera.top = 15; sun.shadow.camera.bottom = -15;
+    scene.add(sun);
+    // ambient warm
+    var ambient = new THREE.AmbientLight(0xfff0d8, 0.55);
+    scene.add(ambient);
+    // a few warm point lights
+    var warm1 = new THREE.PointLight(0xffd9a0, 0.5, 10);
+    warm1.position.set(0, 4, 0);
+    scene.add(warm1);
+    var warm2 = new THREE.PointLight(0xffd9a0, 0.4, 8);
+    warm2.position.set(8, 3, -8);
+    scene.add(warm2);
+    var warm3 = new THREE.PointLight(0xffd9a0, 0.4, 8);
+    warm3.position.set(-8, 3, 8);
+    scene.add(warm3);
   })();
 
   // ===== GUN MODELS (attached directly to CAMERA = always in view) =====
