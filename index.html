@@ -1440,8 +1440,9 @@
     // raycast — shotgun fires a spread of pellets; hip-fire adds inaccuracy
     var euler = new THREE.Euler(pitch, yaw, 0, 'YXZ');
     var pellets = isShotgun ? 6 : 1;
-    // hip-fire spread: big when not aiming, small when ADS
-    var hipSpread = (1 - aimBlend) * 0.06; // radians of random spread when hip-firing
+    // hip-fire spread: wide when not aiming, tight when ADS
+    // SMG/Shotgun spread more; sniper is always precise when ADS
+    var hipSpread = (1 - aimBlend) * (isShotgun ? 0.09 : isSMG ? 0.08 : isLMG ? 0.07 : isSniper ? 0.02 : 0.045);
     var meshes = null;
     for (var p = 0; p < pellets; p++) {
       var spread = isShotgun ? (Math.random() - 0.5) * 0.09 : 0;
@@ -1638,7 +1639,7 @@
 
   renderer.domElement.addEventListener('mousedown', function (e) {
     if (!gameStarted) return;
-    if (e.button === 0) { firing = true; shoot(); }
+    if (e.button === 0) { firing = true; } // auto-fire loop handles the shot
     if (e.button === 2) aiming = true;
   });
   document.addEventListener('mouseup', function (e) {
@@ -1759,7 +1760,7 @@
     el.addEventListener('mousedown', function (e) { e.preventDefault(); ensureAudio(); if (onDown) onDown(); });
     el.addEventListener('mouseup', function () { if (onUp) onUp(); });
   }
-  btnBind('fireBtn', function () { firing = true; shoot(); }, function () { firing = false; });
+  btnBind('fireBtn', function () { firing = true; }, function () { firing = false; });
   btnBind('runBtn', function () { isRunning = true; }, function () { isRunning = false; });
   btnBind('reloadBtn', function () {
     if (!isReloading && ammo < magSize) startReload();
@@ -2595,13 +2596,22 @@
       // keep the viewmodel light following the gun (world position of gun)
       gunLight.position.copy(gunGroup.getWorldPosition(_gunWorldPos));
 
-      // auto-fire (AK-47 full auto): hold to keep shooting, time-based cadence
+      // auto-fire (full auto weapons); semi-auto fire once per press
+      var isSemi = WEAPONS[currentWeapon].name === 'PISTOL' || WEAPONS[currentWeapon].name === 'DEAGLE' || WEAPONS[currentWeapon].name === 'SNIPER';
       if (firing && !isReloading) {
-        fireTimer -= dt;
-        if (fireTimer <= 0) {
-          shoot();
-          fireTimer += WEAPONS[currentWeapon].fireInterval;
-          if (ammo <= 0) fireTimer = 0; // trigger reload immediately on empty
+        if (!isSemi) {
+          fireTimer -= dt;
+          if (fireTimer <= 0) {
+            shoot();
+            fireTimer += WEAPONS[currentWeapon].fireInterval;
+            if (ammo <= 0) fireTimer = 0; // trigger reload immediately on empty
+          }
+        } else {
+          // semi-auto: fire once on press, then require release
+          if (fireTimer <= 0) {
+            shoot();
+            fireTimer = 999; // block until released
+          }
         }
       } else {
         fireTimer = 0;
