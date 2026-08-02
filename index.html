@@ -128,7 +128,7 @@
 
 <div id="blocker">
   <h1>🔫 FPS Game</h1>
-  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v21</div>
+  <div id="versionTag" style="font-size:13px; color:#7aa2ff; font-family:monospace; margin-bottom:8px; background:rgba(90,122,255,0.15); padding:3px 12px; border-radius:6px; border:1px solid rgba(90,122,255,0.3);">v22</div>
   <p>Desktop: Click to start — WASD move, Mouse look, Left Click shoot, Right Click AIM, R reload, 1-8 weapons</p>
   <p>Mobile: Joystick move, Touch right to look, FIRE shoot, AIM zoom, SWAP weapons</p>
   <button class="start-btn" id="startBtn">START GAME</button>
@@ -198,7 +198,7 @@
   "use strict";
 
   /* ===================== CONSTANTS ===================== */
-  var GAME_VERSION = 'v21'; // bump with every update — shown in menu + HUD
+  var GAME_VERSION = 'v22'; // bump with every update — shown in menu + HUD
   var ROOM = 40, WALL_H = 6;
   var R = 0.4; // player collision radius
   var isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
@@ -1166,7 +1166,7 @@
   //   LMG:     sight y=0.09,  adsScale 0.85 → adsY ≈ -0.077
   // Gun pushed forward + small scale → body stays BELOW the sight line
   var WEAPONS = [
-    { name: 'AK-47', magSize: 30, fireInterval: 0.09, build: buildAK47, flashScale: 0.6, adsX: 0, adsY: -0.081, adsZ: -0.6, adsScale: 0.85 },
+    { name: 'AK-47', magSize: 30, fireInterval: 0.5, build: buildAK47, flashScale: 0.6, adsX: 0, adsY: -0.081, adsZ: -0.6, adsScale: 0.85 },
     { name: 'SHOTGUN', magSize: 8, fireInterval: 0.35, build: buildShotgun, flashScale: 0.9, adsX: 0, adsY: -0.05, adsZ: -0.56, adsScale: 0.9 },
     { name: 'PISTOL', magSize: 12, fireInterval: 0.22, build: buildPistol, flashScale: 0.4, adsX: 0, adsY: -0.055, adsZ: -0.5, adsScale: 1.0 },
     { name: 'SMG', magSize: 40, fireInterval: 0.065, build: buildSMG, flashScale: 0.5, adsX: 0, adsY: -0.077, adsZ: -0.55, adsScale: 0.9 },
